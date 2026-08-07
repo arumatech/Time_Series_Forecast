@@ -26,3 +26,18 @@ entity FLATFILE : managed {
     @title: 'File name';
 
 }
+
+
+entity INVENTORY_WEEKLY : managed {
+    key period : String(20)
+    @title: 'Period';
+
+    crude_stocks_excl_spr_kbbl : String(20);
+
+    crude_stocks_spr_kbbl : String(20);
+
+    total_gasoline_stocks_kbbl : String(20);
+
+    distillate_stocks_kbbl : String(20);
+ 
+}
