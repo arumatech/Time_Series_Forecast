@@ -1,0 +1,29 @@
+Starting CAP Project Generator...
+Using @sap/cds-dk [9.9.1] from /extbin/globals/bun/global/install/node_modules/@sap/cds-dk
+Using @sap/generator-cap-project [2.0.6] from [/extbin/globals/bun/global/install/node_modules/@sap/generator-cap-project]
+Using root path [/home/user/projects]
+
+Creating project with hana, mta, nodejs
+
+Adding facet: nodejs
+Adding facet: mta
+Adding facet: hana
+
+Successfully initialized CAP project
+Continue with: code TIME_SERIES_FORECAST 
+
+
+Installing dependencies...
+
+added 259 packages, and audited 260 packages in 5s
+
+40 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+
+Finished installing dependencies
+
+Done setting up project TIME_SERIES_FORECAST
+Project is ready to use
+
