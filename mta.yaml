@@ -8,6 +8,7 @@ modules:
   path: gen/srv
   requires:
   - name: TIME_SERIES_FORECAST-db
+  - name: TIME_SERIES_FORECAST-auth
   provides:
   - name: srv-api
     properties:
@@ -48,6 +49,26 @@ modules:
     - npm install
     - npm run build:cf
     supported-platforms: []
+
+- name: TIME_SERIES_FORECAST-python
+  type: python
+  path: python
+  requires:
+  - name: TIME_SERIES_FORECAST-auth
+  - name: TIME_SERIES_FORECAST-destination-service
+  - name: srv-api
+    group: destinations
+    properties:
+      name: cap-service
+      url: ~{srv-url}
+  properties:
+    CAP_SERVICE_URL: ~{srv-api/srv-url}
+  parameters:
+    buildpack: python_buildpack
+    no-route: true
+    no-start: true
+    command: python fetch_oil_data.py
+
 resources:
 - name: TIME_SERIES_FORECAST-db
   type: com.sap.xs.hdi-container
@@ -76,8 +97,21 @@ resources:
           existing_destinations_policy: update
       version: 1.0.0
     service: destination
-    service-name: TIME_SERIES_FORECAST-destination-service
+    service-name: destination-service
     service-plan: lite
+- name: TIME_SERIES_FORECAST-auth
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: xsuaa
+    service-plan: application
+    path: ./xs-security.json
+    config:
+      xsappname: TIME_SERIES_FORECAST-${org}-${space}
+      tenant-mode: dedicated
+      oauth2-configuration:
+        credential-types:
+        - binding-secret
+        - x509
 parameters:
   deploy_mode: html5-repo
   enable-parallel-deployments: true
