@@ -1,5 +1,9 @@
 using CatalogService as service from '../../srv/cat-service';
+
 annotate service.FLATFILE with @(
+    Capabilities.InsertRestrictions : {
+        Insertable : false,
+    },
     UI.FieldGroup #GeneratedGroup : {
         $Type : 'UI.FieldGroupType',
         Data : [
@@ -74,6 +78,17 @@ annotate service.FLATFILE with @(
             $Type : 'UI.DataField',
             Value : DCSID,
         },
+        {
+            $Type : 'UI.DataField',
+            Value : FILENAME,
+        },
+        {
+            $Type : 'UI.DataField',
+            Value : PRICE,
+        },
+        {
+            $Type : 'UI.DataField',
+            Value : UOM,
+        },
     ],
 );
-

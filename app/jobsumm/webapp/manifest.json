@@ -1,7 +1,7 @@
 {
   "_version": "1.86.0",
   "sap.app": {
-    "id": "flatfile",
+    "id": "jobsumm",
     "type": "application",
     "i18n": "i18n/i18n.properties",
     "applicationVersion": {
@@ -13,7 +13,7 @@
     "sourceTemplate": {
       "id": "@sap/generator-fiori:lrop",
       "version": "1.30.0",
-      "toolsId": "7baca07e-6efd-464e-a3ed-52006d8d5cb1"
+      "toolsId": "1cf65303-2ec0-4fe8-a12d-beb0d3f44acd"
     },
     "dataSources": {
       "mainService": {
@@ -47,11 +47,10 @@
     "dependencies": {
       "minUI5Version": "1.151.0",
       "libs": {
-    "sap.m": {},
-    "sap.ui.core": {},
-    "sap.ui.unified": {},
-    "sap.fe.templates": {}
-    }
+        "sap.m": {},
+        "sap.ui.core": {},
+        "sap.fe.templates": {}
+      }
     },
     "contentDensities": {
       "compact": true,
@@ -61,7 +60,7 @@
       "i18n": {
         "type": "sap.ui.model.resource.ResourceModel",
         "settings": {
-          "bundleName": "flatfile.i18n.i18n"
+          "bundleName": "jobsumm.i18n.i18n"
         }
       },
       "": {
@@ -86,28 +85,28 @@
       "routes": [
         {
           "pattern": ":?query:",
-          "name": "FLATFILEList",
-          "target": "FLATFILEList"
+          "name": "JOBSUMMList",
+          "target": "JOBSUMMList"
         },
         {
-          "pattern": "FLATFILE({key}):?query:",
-          "name": "FLATFILEObjectPage",
-          "target": "FLATFILEObjectPage"
+          "pattern": "JOBSUMM({key}):?query:",
+          "name": "JOBSUMMObjectPage",
+          "target": "JOBSUMMObjectPage"
         }
       ],
       "targets": {
-        "FLATFILEList": {
+        "JOBSUMMList": {
           "type": "Component",
-          "id": "FLATFILEList",
+          "id": "JOBSUMMList",
           "name": "sap.fe.templates.ListReport",
           "options": {
             "settings": {
-              "contextPath": "/FLATFILE",
+              "contextPath": "/JOBSUMM",
               "variantManagement": "Page",
               "navigation": {
-                "FLATFILE": {
+                "JOBSUMM": {
                   "detail": {
-                    "route": "FLATFILEObjectPage"
+                    "route": "JOBSUMMObjectPage"
                   }
                 }
               },
@@ -117,27 +116,26 @@
                     "type": "ResponsiveTable"
                   },
                   "actions": {
-                    "uploadCSV": {
-                      "id": "uploadCSV",
-                      "text": "Upload CSV",
-                      "press": ".extension.flatfile.ext.controller.ListReportExt.onUploadCSV",
+                    "newJob": {
+                      "id": "newJob",
+                      "text": "New Job",
+                      "press": ".extension.jobsumm.ext.controller.ListReportExt.onNewJob",
                       "requiresSelection": false
                     }
                   }
                 }
-              },
-              "initialLoad": "Enabled"
+              }
             }
           }
         },
-        "FLATFILEObjectPage": {
+        "JOBSUMMObjectPage": {
           "type": "Component",
-          "id": "FLATFILEObjectPage",
+          "id": "JOBSUMMObjectPage",
           "name": "sap.fe.templates.ObjectPage",
           "options": {
             "settings": {
               "editableHeaderContent": false,
-              "contextPath": "/FLATFILE"
+              "contextPath": "/JOBSUMM"
             }
           }
         }
@@ -147,7 +145,7 @@
       "extensions": {
         "sap.ui.controllerExtensions": {
           "sap.fe.templates.ListReport.ListReportController": {
-            "controllerName": "flatfile.ext.controller.ListReportExt"
+            "controllerName": "jobsumm.ext.controller.ListReportExt"
           }
         }
       }

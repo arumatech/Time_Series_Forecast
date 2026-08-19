@@ -22,7 +22,9 @@
     "watch-flatfile": "cds watch --open flatfile/index.html?sap-ui-xx-viewCache=false --livereload false",
     "undeploy": "cf undeploy TIME_SERIES_FORECAST --delete-services --delete-service-keys --delete-service-brokers",
     "build": "rimraf resources mta_archives && mbt build --mtar archive",
-    "deploy": "cf deploy mta_archives/archive.mtar --retries 1"
+    "deploy": "cf deploy mta_archives/archive.mtar --retries 1",
+    "watch-project1": "cds watch --open project1/index.html?sap-ui-xx-viewCache=false --livereload false",
+    "watch-jobsumm": "cds watch --open jobsumm/index.html?sap-ui-xx-viewCache=false --livereload false"
   },
   "private": true,
   "cds": {
@@ -46,6 +48,8 @@
     "app/*"
   ],
   "sapux": [
-    "app/flatfile"
+    "app/flatfile",
+    "app/project1",
+    "app/jobsumm"
   ]
 }
