@@ -1,0 +1,17 @@
+{
+  "ext/view/ForecastDialog.fragment.xml": 1787250659579,
+  "Component.js": 1787250659575,
+  "manifest.json": 1787250659579,
+  "ext/controller/ListReportExt.controller.js": 1787250659575,
+  "Component-dbg.js": 1787250659575,
+  "Component.js.map": 1787250967993,
+  "ext/controller/ListReportExt-dbg.controller.js": 1787250659575,
+  "ext/controller/ListReportExt.controller.js.map": 1787250968020,
+  "Component-preload.js": 1787250968145,
+  "Component-preload.js.map": 1787250968145,
+  "ext/view/NewJobDialog.fragment.xml": 1787250659579,
+  "ext/view/InstrumentValueHelp.fragment.xml": 1787250659579,
+  "i18n/i18n.properties": 1787250659579,
+  "ext/view/CorrelationDialog.fragment.xml": 1787250659579,
+  "index.html": 1787250659579
+}

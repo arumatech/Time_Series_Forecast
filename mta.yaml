@@ -40,26 +40,12 @@ modules:
           name: flatfile
           target-path: resources/
         - artifacts:
-            - project1.zip
-          name: project1
-          target-path: resources/
-        - artifacts:
             - jobsumm.zip
           name: jobsumm
           target-path: resources/
   - name: flatfile
     type: html5
     path: app/flatfile
-    build-parameters:
-      build-result: dist
-      builder: custom
-      commands:
-        - npm install
-        - 'npm run build:cf'
-      supported-platforms: []
-  - name: project1
-    type: html5
-    path: app/project1
     build-parameters:
       build-result: dist
       builder: custom

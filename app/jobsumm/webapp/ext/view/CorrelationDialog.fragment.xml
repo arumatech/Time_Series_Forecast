@@ -1,0 +1,160 @@
+<core:FragmentDefinition
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core">
+
+  <Dialog
+    id="correlationDialog"
+    title="Create Correlation Job"
+    contentWidth="32rem">
+
+    <content>
+      <VBox
+        id="correlationContent"
+        class="sapUiSmallMargin">
+
+        <Label
+          id="correlationSourceDCSIDLabel"
+          text="Source DCSID"
+          labelFor="correlationSourceDCSID" />
+
+        <Input
+          id="correlationSourceDCSID"
+          width="100%"
+          placeholder="Search for source DCSID"
+          showValueHelp="true"
+          valueHelpRequest=".onCorrelationSourceDCSIDValueHelp" />
+
+        <Label
+          id="correlationSourceMICLabel"
+          text="Source MIC"
+          labelFor="correlationSourceMIC"
+          class="sapUiSmallMarginTop" />
+
+        <Select
+          id="correlationSourceMIC"
+          width="100%"
+          enabled="{= ${jobForm>/sourceMICs}.length > 0 }"
+          selectedKey="{jobForm>/sourceMIC}"
+          items="{jobForm>/sourceMICs}">
+          <items>
+            <core:Item
+              id="correlationSourceMICItem"
+              key="{jobForm>MIC}"
+              text="{jobForm>MIC}" />
+          </items>
+        </Select>
+
+        <Label
+          id="correlationTargetDCSIDLabel"
+          text="Target DCSID"
+          labelFor="correlationTargetDCSID"
+          class="sapUiSmallMarginTop" />
+
+        <Input
+          id="correlationTargetDCSID"
+          width="100%"
+          placeholder="Search for target DCSID"
+          showValueHelp="true"
+          valueHelpRequest=".onCorrelationTargetDCSIDValueHelp" />
+
+        <Label
+          id="correlationTargetMICLabel"
+          text="Target MIC"
+          labelFor="correlationTargetMIC"
+          class="sapUiSmallMarginTop" />
+
+        <Select
+          id="correlationTargetMIC"
+          width="100%"
+          enabled="{= ${jobForm>/targetMICs}.length > 0 }"
+          selectedKey="{jobForm>/targetMIC}"
+          items="{jobForm>/targetMICs}">
+          <items>
+            <core:Item
+              id="correlationTargetMICItem"
+              key="{jobForm>MIC}"
+              text="{jobForm>MIC}" />
+          </items>
+        </Select>
+
+        <Label
+          id="correlationHorizonTypeLabel"
+          text="Horizon Type"
+          labelFor="correlationHorizonType"
+          class="sapUiSmallMarginTop" />
+
+        <Select
+          id="correlationHorizonType"
+          width="100%"
+          selectedKey="W">
+          <items>
+            <core:Item
+              id="correlationHorizonDay"
+              key="D"
+              text="Day" />
+            <core:Item
+              id="correlationHorizonWeek"
+              key="W"
+              text="Week" />
+            <core:Item
+              id="correlationHorizonMonth"
+              key="M"
+              text="Month" />
+          </items>
+        </Select>
+
+        <Label
+          id="correlationHorizonLabel"
+          text="Horizon"
+          labelFor="correlationHorizon"
+          class="sapUiSmallMarginTop" />
+
+        <Input
+          id="correlationHorizon"
+          width="100%"
+          type="Number"
+          value="1" />
+
+        <Label
+          id="correlationModelLabel"
+          text="Correlation Model"
+          labelFor="correlationModel"
+          class="sapUiSmallMarginTop" />
+
+        <Select
+          id="correlationModel"
+          width="100%"
+          selectedKey="XGBoost">
+          <items>
+            <core:Item
+              id="correlationModelXGBoost"
+              key="XGBoost"
+              text="XGBoost" />
+            <core:Item
+              id="correlationModelARIMA"
+              key="ARIMA"
+              text="ARIMA" />
+          </items>
+        </Select>
+
+      </VBox>
+    </content>
+
+    <beginButton>
+      <Button
+        id="executeCorrelationButton"
+        text="Execute"
+        type="Emphasized"
+        press=".onExecuteCorrelation" />
+    </beginButton>
+
+    <endButton>
+      <Button
+        id="cancelCorrelationButton"
+        text="Cancel"
+        press=".onCloseCorrelation" />
+    </endButton>
+
+  </Dialog>
+
+</core:FragmentDefinition>

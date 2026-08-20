@@ -1,0 +1,54 @@
+<core:FragmentDefinition
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core">
+
+  <Dialog
+    id="newJobDialog"
+    title="Create New Job"
+    contentWidth="30rem">
+
+    <content>
+      <VBox
+        id="newJobContent"
+        class="sapUiSmallMargin">
+
+        <Label
+          id="jobTypeLabel"
+          text="Job Type"
+          labelFor="jobTypeGroup" />
+
+        <RadioButtonGroup
+          id="jobTypeGroup"
+          columns="2"
+          selectedIndex="0">
+          <buttons>
+            <RadioButton
+              id="forecastRadioButton"
+              text="Forecast" />
+            <RadioButton
+              id="correlationRadioButton"
+              text="Correlation" />
+          </buttons>
+        </RadioButtonGroup>
+
+      </VBox>
+    </content>
+
+    <beginButton>
+      <Button
+        id="continueButton"
+        text="Continue"
+        type="Emphasized"
+        press=".onContinue" />
+    </beginButton>
+
+    <endButton>
+      <Button
+        id="cancelButton"
+        text="Cancel"
+        press=".onCloseNewJob" />
+    </endButton>
+
+  </Dialog>
+
+</core:FragmentDefinition>

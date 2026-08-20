@@ -1,51 +1,56 @@
 {
-  "name": "TIME_SERIES_FORECAST",
-  "version": "1.0.0",
-  "dependencies": {
-    "@cap-js/hana": "^2",
-    "@sap/cds": "^9",
-    "@sap/hana-client": "^2.27.23",
-    "@sap/xssec": "^4",
-    "express": "^4",
-    "hdb": "^2.27.1"
-  },
-  "devDependencies": {
-    "@cap-js/sqlite": "^2.4",
-    "@sap/cds-dk": "^9",
-    "@sap/hdi-deploy": "4.9.5",
-    "cds-plugin-ui5": "^0.13.0",
-    "mbt": "^1.2.29",
-    "rimraf": "^5.0.5"
-  },
-  "scripts": {
-    "start": "cds-serve",
-    "watch-flatfile": "cds watch --open flatfile/index.html?sap-ui-xx-viewCache=false --livereload false",
-    "undeploy": "cf undeploy TIME_SERIES_FORECAST --delete-services --delete-service-keys --delete-service-brokers",
-    "build": "rimraf resources mta_archives && mbt build --mtar archive",
-    "deploy": "cf deploy mta_archives/archive.mtar --retries 1"
-  },
-  "private": true,
-  "cds": {
-    "requires": {
-      "db": "hana",
-      "[production]": {
-        "auth": "xsuaa"
-      },
-      "hana": {
-        "deploy-format": "hdbtable"
-      },
-      "destinations": true,
-      "html5-repo": true,
-      "workzone": true
-    },
-    "hana": {
-      "deploy-format": "hdbtable"
-    }
-  },
-  "workspaces": [
-    "app/*"
-  ],
-  "sapux": [
-    "app/flatfile"
-  ]
+	"name": "TIME_SERIES_FORECAST",
+	"version": "1.0.0",
+	"dependencies": {
+		"@cap-js/hana": "^2",
+		"@sap/cds": "^9",
+		"@sap/hana-client": "^2.27.23",
+		"@sap/xssec": "^4",
+		"express": "^4",
+		"hdb": "^2.27.1"
+	},
+	"devDependencies": {
+		"@cap-js/sqlite": "^2.4",
+		"@sap/cds-dk": "^9",
+		"@sap/hdi-deploy": "4.9.5",
+		"cds-plugin-ui5": "^0.13.0",
+		"mbt": "^1.2.29",
+		"rimraf": "^5.0.5",
+		"@sap/dev-cap-tools": "^1.31.0"
+	},
+	"scripts": {
+		"start": "cds-serve",
+		"watch-flatfile": "cds watch --open flatfile/index.html?sap-ui-xx-viewCache=false --livereload false",
+		"undeploy": "cf undeploy TIME_SERIES_FORECAST --delete-services --delete-service-keys --delete-service-brokers",
+		"build": "rimraf resources mta_archives && mbt build --mtar archive",
+		"deploy": "cf deploy mta_archives/archive.mtar --retries 1",
+		"watch-project1": "cds watch --open project1/index.html?sap-ui-xx-viewCache=false --livereload false",
+		"watch-jobsumm": "cds watch --open jobsumm/index.html?sap-ui-xx-viewCache=false --livereload false"
+	},
+	"private": true,
+	"cds": {
+		"requires": {
+			"db": "hana",
+			"[production]": {
+				"auth": "xsuaa"
+			},
+			"hana": {
+				"deploy-format": "hdbtable"
+			},
+			"destinations": true,
+			"html5-repo": true,
+			"workzone": true
+		},
+		"hana": {
+			"deploy-format": "hdbtable"
+		}
+	},
+	"workspaces": [
+		"app/*"
+	],
+	"sapux": [
+		"app/flatfile",
+		"app/project1",
+		"app/jobsumm"
+	]
 }

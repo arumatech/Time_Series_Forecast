@@ -66,6 +66,7 @@
 			"libs": {
 				"sap.m": {},
 				"sap.ui.core": {},
+				"sap.ui.unified": {},
 				"sap.fe.templates": {}
 			}
 		},
@@ -139,9 +140,18 @@
 								"@com.sap.vocabularies.UI.v1.LineItem": {
 									"tableSettings": {
 										"type": "ResponsiveTable"
+									},
+									"actions": {
+										"uploadCSV": {
+											"id": "uploadCSV",
+											"text": "Upload CSV",
+											"press": ".extension.flatfile.ext.controller.ListReportExt.onUploadCSV",
+											"requiresSelection": false
+										}
 									}
 								}
-							}
+							},
+							"initialLoad": "Enabled"
 						}
 					}
 				},
@@ -154,6 +164,15 @@
 							"editableHeaderContent": false,
 							"contextPath": "/FLATFILE"
 						}
+					}
+				}
+			}
+		},
+		"extends": {
+			"extensions": {
+				"sap.ui.controllerExtensions": {
+					"sap.fe.templates.ListReport.ListReportController": {
+						"controllerName": "flatfile.ext.controller.ListReportExt"
 					}
 				}
 			}

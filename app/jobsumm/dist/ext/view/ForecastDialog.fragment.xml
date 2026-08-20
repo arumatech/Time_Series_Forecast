@@ -1,0 +1,127 @@
+<core:FragmentDefinition
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core">
+
+  <Dialog
+    id="forecastDialog"
+    title="Create Forecast Job"
+    contentWidth="32rem">
+
+    <content>
+      <VBox
+        id="forecastContent"
+        class="sapUiSmallMargin">
+
+        <Label
+          id="forecastModelLabel"
+          text="Model"
+          labelFor="forecastModel" />
+
+        <Select
+          id="forecastModel"
+          width="100%"
+          selectedKey="XGBoost">
+          <items>
+            <core:Item
+              id="forecastModelXGBoost"
+              key="XGBoost"
+              text="XGBoost" />
+            <core:Item
+              id="forecastModelARIMA"
+              key="ARIMA"
+              text="ARIMA" />
+          </items>
+        </Select>
+
+        <Label
+          id="forecastDCSIDLabel"
+          text="DCSID"
+          labelFor="forecastDCSID"
+          class="sapUiSmallMarginTop" />
+
+        <Input
+          id="forecastDCSID"
+          width="100%"
+          placeholder="Search for DCSID"
+          showValueHelp="true"
+          valueHelpRequest=".onForecastDCSIDValueHelp" />
+
+        <Label
+          id="forecastMICLabel"
+          text="MIC"
+          labelFor="forecastMIC"
+          class="sapUiSmallMarginTop" />
+
+        <Select
+          id="forecastMIC"
+          width="100%"
+          enabled="{= ${jobForm>/forecastMICs}.length > 0 }"
+          selectedKey="{jobForm>/forecastMIC}"
+          items="{jobForm>/forecastMICs}">
+          <items>
+            <core:Item
+              id="forecastMICItem"
+              key="{jobForm>MIC}"
+              text="{jobForm>MIC}" />
+          </items>
+        </Select>
+
+        <Label
+          id="forecastHorizonTypeLabel"
+          text="Horizon Type"
+          labelFor="forecastHorizonType"
+          class="sapUiSmallMarginTop" />
+
+        <Select
+          id="forecastHorizonType"
+          width="100%"
+          selectedKey="W">
+          <items>
+            <core:Item
+              id="forecastHorizonDay"
+              key="D"
+              text="Day" />
+            <core:Item
+              id="forecastHorizonWeek"
+              key="W"
+              text="Week" />
+            <core:Item
+              id="forecastHorizonMonth"
+              key="M"
+              text="Month" />
+          </items>
+        </Select>
+
+        <Label
+          id="forecastHorizonLabel"
+          text="Horizon"
+          labelFor="forecastHorizon"
+          class="sapUiSmallMarginTop" />
+
+        <Input
+          id="forecastHorizon"
+          width="100%"
+          type="Number"
+          value="1" />
+
+      </VBox>
+    </content>
+
+    <beginButton>
+      <Button
+        id="executeForecastButton"
+        text="Execute"
+        type="Emphasized"
+        press=".onExecuteForecast" />
+    </beginButton>
+
+    <endButton>
+      <Button
+        id="cancelForecastButton"
+        text="Cancel"
+        press=".onCloseForecast" />
+    </endButton>
+
+  </Dialog>
+
+</core:FragmentDefinition>

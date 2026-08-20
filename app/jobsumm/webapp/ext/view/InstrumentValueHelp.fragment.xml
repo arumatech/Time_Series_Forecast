@@ -1,0 +1,28 @@
+<core:FragmentDefinition
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core">
+
+  <SelectDialog
+    id="instrumentValueHelp"
+    title="Select DCSID"
+    noDataText="No DCSIDs found"
+    search=".onDCSIDSearch"
+    confirm=".onDCSIDConfirm"
+    cancel=".onDCSIDCancel"
+    items="{
+      path: '/DCSIDS',
+      parameters: {
+        $select: 'DCSID'
+      }
+    }">
+
+    <items>
+      <StandardListItem
+        id="dcsidListItem"
+        title="{DCSID}"
+        type="Active" />
+    </items>
+
+  </SelectDialog>
+
+</core:FragmentDefinition>
