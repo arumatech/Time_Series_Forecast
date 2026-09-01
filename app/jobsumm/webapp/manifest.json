@@ -24,6 +24,20 @@
           "odataVersion": "4.0"
         }
       }
+    },
+    "crossNavigation": {
+      "inbounds": {
+        "jobsumm-display": {
+          "semanticObject": "ForecastJobs",
+          "action": "display",
+          "title": "{{appTitle}}",
+          "subTitle": "{{appDescription}}",
+          "signature": {
+            "parameters": {},
+            "additionalParameters": "allowed"
+          }
+        }
+      }
     }
   },
   "sap.ui": {
@@ -159,5 +173,9 @@
     "app": {
       "enableLazyLoading": true
     }
+  },
+  "sap.cloud": {
+    "public": true,
+    "service": "TIME_SERIES_FORECAST.service"
   }
 }

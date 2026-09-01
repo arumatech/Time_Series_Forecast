@@ -5,6 +5,19 @@ module.exports = cds.service.impl(function () {
   const { UPSERT } = cds.ql;
 
   this.before("CREATE", "JOBSUMM", async (req) => {
+    if (!req.data.JOBSTARTDATE) {
+      return req.reject(
+        400,
+        "Job Start Date is required"
+      );
+    }
+
+    // Populated later when the job actually starts running.
+    req.data.JOBSTTMSTMP = null;
+
+    // Every newly created job begins in the entered state.
+    req.data.JOBSTATUS = "ENTERED";
+
     const tx = cds.tx(req);
 
     const [result] = await tx.run(
@@ -26,7 +39,10 @@ module.exports = cds.service.impl(function () {
       const aCsvRows = cds.parse.csv(sCleanCsv);
 
       if (aCsvRows.length < 2) {
-        return req.reject(400, "The CSV contains no data rows");
+        return req.reject(
+          400,
+          "The CSV contains no data rows"
+        );
       }
 
       const aHeaders = aCsvRows[0].map((sHeader) =>
@@ -42,7 +58,9 @@ module.exports = cds.service.impl(function () {
           const vValue = aRow[iColumn];
 
           oRow[sHeader] =
-            typeof vValue === "string" ? vValue.trim() : vValue;
+            typeof vValue === "string"
+              ? vValue.trim()
+              : vValue;
         });
 
         const oEntry = {
@@ -93,7 +111,10 @@ module.exports = cds.service.impl(function () {
     } catch (oError) {
       console.error("CSV upload error:", oError);
 
-      if (oError.statusCode === 400 || oError.code === 400) {
+      if (
+        oError.statusCode === 400 ||
+        oError.code === 400
+      ) {
         throw oError;
       }
 
@@ -137,6 +158,7 @@ function convertPriceDate(sValue) {
   }
 
   const [sMonth, sDay, sYear] = aParts;
+
   const sFullYear =
     sYear.length === 2 ? `20${sYear}` : sYear;
 

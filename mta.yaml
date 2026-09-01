@@ -43,6 +43,36 @@ modules:
             - jobsumm.zip
           name: jobsumm
           target-path: resources/
+  - name: TIME_SERIES_FORECAST-destination-content
+    type: com.sap.application.content
+    requires:
+      - name: TIME_SERIES_FORECAST-destination-service
+        parameters:
+          content-target: true
+      - name: TIME_SERIES_FORECAST-repo-host
+        parameters:
+          service-key:
+            name: TIME_SERIES_FORECAST-html5-service-key
+      - name: TIME_SERIES_FORECAST-auth
+        parameters:
+          service-key:
+            name: TIME_SERIES_FORECAST-auth-key
+    parameters:
+      content:
+        instance:
+          destinations:
+            - Name: TIME_SERIES_FORECAST-html5-repository
+              ServiceInstanceName: TIME_SERIES_FORECAST-html5-service
+              ServiceKeyName: TIME_SERIES_FORECAST-html5-service-key
+              sap.cloud.service: TIME_SERIES_FORECAST.service
+            - Authentication: OAuth2UserTokenExchange
+              Name: TIME_SERIES_FORECAST-auth
+              ServiceInstanceName: TIME_SERIES_FORECAST-auth
+              ServiceKeyName: TIME_SERIES_FORECAST-auth-key
+              sap.cloud.service: TIME_SERIES_FORECAST.service
+          existing_destinations_policy: update
+    build-parameters:
+      no-source: true
   - name: flatfile
     type: html5
     path: app/flatfile
@@ -98,7 +128,7 @@ resources:
     type: org.cloudfoundry.managed-service
     parameters:
       config:
-        HTML5Runtime_enabled: false
+        HTML5Runtime_enabled: true
         init_data:
           instance:
             destinations:
@@ -128,7 +158,7 @@ resources:
       service-plan: application
       path: ./xs-security.json
       config:
-        xsappname: 'TIME_SERIES_FORECAST--'
+        xsappname: 'TIME_SERIES_FORECAST'
         tenant-mode: dedicated
         oauth2-configuration:
           credential-types:

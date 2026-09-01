@@ -90,7 +90,7 @@ END_DATE: str | None = None
 # Maximum final rows per dataset.
 # 50 = useful for testing.
 # None = keep all rows in the selected date range.
-MAX_ROWS: int | None = 50
+MAX_ROWS: int | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +105,7 @@ WORLD_BANK_END_YEAR: int | None = None
 # Maximum final World Bank rows.
 # 50 = testing.
 # None = keep all years in the selected range.
-WORLD_BANK_MAX_ROWS: int | None = 50
+WORLD_BANK_MAX_ROWS: int | None = None
 
 
 # ---------------------------------------------------------------------------

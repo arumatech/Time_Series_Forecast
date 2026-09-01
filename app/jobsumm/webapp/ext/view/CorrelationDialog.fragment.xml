@@ -78,6 +78,21 @@
         </Select>
 
         <Label
+          id="correlationJobStartDateLabel"
+          text="Job Start Date"
+          labelFor="correlationJobStartDate"
+          required="true"
+          class="sapUiSmallMarginTop" />
+
+        <DatePicker
+          id="correlationJobStartDate"
+          width="100%"
+          valueFormat="yyyy-MM-dd"
+          displayFormat="MM/dd/yyyy"
+          placeholder="Select job start date"
+          required="true" />
+
+        <Label
           id="correlationHorizonTypeLabel"
           text="Horizon Type"
           labelFor="correlationHorizonType"

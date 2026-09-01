@@ -1,3 +1,7 @@
 {
-    "SAP HANA Database Explorer.ShowXsAdvancedConnections": true
+    "SAP HANA Database Explorer.ShowXsAdvancedConnections": true,
+    "SAP HANA Project Explorer.bind.confirm existing service": false,
+    "SAP HANA Project Explorer.bind.confirm automatic undeployment": false,
+    "SAP HANA SQLScript LSP.URL": "https://cf-ap21.cf.hana-tooling.ingress.orchestration.prod-ap21.hanacloud.ondemand.com/hrtt-service",
+    "SAP HANA SQLScript LSP.XsAdvancedHrttServiceUrl": ""
 }

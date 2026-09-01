@@ -1,6 +1,77 @@
 {
-  "description": "Security profile of called application",
-  "scopes": [],
+  "xsappname": "TIME_SERIES_FORECAST",
+  "tenant-mode": "dedicated",
+  "description": "Authorization model for the Time Series Forecasting applications",
+  "scopes": [
+    {
+      "name": "$XSAPPNAME.FlatFileRead",
+      "description": "View flat-file market data"
+    },
+    {
+      "name": "$XSAPPNAME.FlatFileManage",
+      "description": "Upload and maintain flat-file market data"
+    },
+    {
+      "name": "$XSAPPNAME.JobRead",
+      "description": "View forecasting and correlation jobs"
+    },
+    {
+      "name": "$XSAPPNAME.JobCreate",
+      "description": "Create forecasting and correlation jobs"
+    },
+    {
+      "name": "$XSAPPNAME.DataIngestion",
+      "description": "Technical access for scheduled market-data ingestion"
+    }
+  ],
   "attributes": [],
-  "role-templates": []
+  "role-templates": [
+    {
+      "name": "FlatFileViewer",
+      "description": "View flat-file market data",
+      "scope-references": [
+        "$XSAPPNAME.FlatFileRead"
+      ]
+    },
+    {
+      "name": "FlatFileManager",
+      "description": "View, upload, and maintain flat-file market data",
+      "scope-references": [
+        "$XSAPPNAME.FlatFileRead",
+        "$XSAPPNAME.FlatFileManage"
+      ]
+    },
+    {
+      "name": "ForecastViewer",
+      "description": "View forecasting and correlation jobs",
+      "scope-references": [
+        "$XSAPPNAME.JobRead"
+      ]
+    },
+    {
+      "name": "ForecastOperator",
+      "description": "View and create forecasting and correlation jobs",
+      "scope-references": [
+        "$XSAPPNAME.JobRead",
+        "$XSAPPNAME.JobCreate"
+      ]
+    },
+    {
+      "name": "Administrator",
+      "description": "Full access to the Time Series Forecasting applications",
+      "scope-references": [
+        "$XSAPPNAME.FlatFileRead",
+        "$XSAPPNAME.FlatFileManage",
+        "$XSAPPNAME.JobRead",
+        "$XSAPPNAME.JobCreate"
+      ]
+    },
+    {
+      "name": "DataIngestionClient",
+      "description": "Technical role for the scheduled Python data-ingestion task",
+      "scope-references": [
+        "$XSAPPNAME.DataIngestion"
+      ]
+    }
+  ]
 }

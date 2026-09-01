@@ -28,8 +28,10 @@
     "crossNavigation": {
       "inbounds": {
         "flatfile-display": {
-          "semanticObject": "flatfile",
+          "semanticObject": "FlatFile",
           "action": "display",
+          "title": "{{appTitle}}",
+          "subTitle": "{{appDescription}}",
           "signature": {
             "parameters": {},
             "additionalParameters": "allowed"
@@ -59,11 +61,11 @@
     "dependencies": {
       "minUI5Version": "1.151.0",
       "libs": {
-    "sap.m": {},
-    "sap.ui.core": {},
-    "sap.ui.unified": {},
-    "sap.fe.templates": {}
-    }
+        "sap.m": {},
+        "sap.ui.core": {},
+        "sap.ui.unified": {},
+        "sap.fe.templates": {}
+      }
     },
     "contentDensities": {
       "compact": true,

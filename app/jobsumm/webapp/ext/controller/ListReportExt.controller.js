@@ -338,6 +338,10 @@ sap.ui.define([
           oView.byId("forecastModel")
             .getSelectedKey();
 
+        const sJobStartDate =
+          oView.byId("forecastJobStartDate")
+            .getValue();
+
         const sHorizonType =
           oView.byId("forecastHorizonType")
             .getSelectedKey();
@@ -349,11 +353,12 @@ sap.ui.define([
         if (
           !sDCSID ||
           !sMIC ||
+          !sJobStartDate ||
           !Number.isInteger(iHorizon) ||
           iHorizon < 1
         ) {
           MessageToast.show(
-            "Select a DCSID and MIC and enter a positive integer horizon"
+            "Select a DCSID, MIC, and Job Start Date, and enter a positive integer horizon"
           );
           return;
         }
@@ -366,9 +371,10 @@ sap.ui.define([
             SRCMIC: null,
             TARDCSID: sDCSID,
             TARMIC: sMIC,
+            JOBSTARTDATE: sJobStartDate,
             HORTY: sHorizonType,
             HORVAL: iHorizon,
-            JOBSTTMSTMP: new Date().toISOString(),
+            JOBSTTMSTMP: null,
             JOBENDTMSTMP: null,
             JOBCOMPPCT: 0
           },
@@ -401,6 +407,10 @@ sap.ui.define([
           oView.byId("correlationModel")
             .getSelectedKey();
 
+        const sJobStartDate =
+          oView.byId("correlationJobStartDate")
+            .getValue();
+
         const sHorizonType =
           oView.byId("correlationHorizonType")
             .getSelectedKey();
@@ -415,11 +425,12 @@ sap.ui.define([
           !sSourceMIC ||
           !sTargetDCSID ||
           !sTargetMIC ||
+          !sJobStartDate ||
           !Number.isInteger(iHorizon) ||
           iHorizon < 1
         ) {
           MessageToast.show(
-            "Select source and target values and enter a positive integer horizon"
+            "Select source and target values, a Job Start Date, and enter a positive integer horizon"
           );
           return;
         }
@@ -432,9 +443,10 @@ sap.ui.define([
             SRCMIC: sSourceMIC,
             TARDCSID: sTargetDCSID,
             TARMIC: sTargetMIC,
+            JOBSTARTDATE: sJobStartDate,
             HORTY: sHorizonType,
             HORVAL: iHorizon,
-            JOBSTTMSTMP: new Date().toISOString(),
+            JOBSTTMSTMP: null,
             JOBENDTMSTMP: null,
             JOBCOMPPCT: 0
           },

@@ -31,6 +31,22 @@
 	"cds": {
 		"requires": {
 			"db": "hana",
+			"[development]": {
+					"auth": {
+						"kind": "mocked",
+						"users": {
+						"Nitish": {
+							"password": "Nitish",
+							"roles": [
+							"FlatFileRead",
+							"FlatFileManage",
+							"JobRead",
+							"JobCreate"
+							]
+						}
+						}
+					}
+					},
 			"[production]": {
 				"auth": "xsuaa"
 			},

@@ -19,3 +19,5 @@ mta_archives/
 @cds-models
 
 .env
+# auto generated wildcard
+db/.env

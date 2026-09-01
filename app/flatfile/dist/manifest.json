@@ -33,8 +33,10 @@
 		"crossNavigation": {
 			"inbounds": {
 				"flatfile-display": {
-					"semanticObject": "flatfile",
+					"semanticObject": "FlatFile",
 					"action": "display",
+					"title": "{{appTitle}}",
+					"subTitle": "{{appDescription}}",
 					"signature": {
 						"parameters": {},
 						"additionalParameters": "allowed"

@@ -48,10 +48,19 @@ entity JOBSUMM : managed {
     @title: 'Horizon type(Values - D,W,M)';
     HORVAL        : Integer
     @title: 'Horizon Value';
+    JOBSTARTDATE  : Date
+    @title: 'Job Start Date';
     JOBSTTMSTMP   : Timestamp
     @title: 'Job Start Time Stamp';
     JOBENDTMSTMP  : Timestamp
     @title: 'Job End Time Stamp';
+    JOBSTATUS : String(10) not null default 'ENTERED'
+    @title: 'Job Status'
+    @assert.range: [
+        'ENTERED',
+        'RUNNING',
+        'COMPLETED'
+    ];
     JOBCOMPPCT    : Integer
     @title: 'Job Completion Percentage';
 }

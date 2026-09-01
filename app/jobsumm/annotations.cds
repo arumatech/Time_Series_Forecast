@@ -51,13 +51,23 @@ annotate service.JOBSUMM with @(
             },
             {
                 $Type : 'UI.DataField',
-                Label : 'Job Start',
+                Label : 'Job Start Date',
+                Value : JOBSTARTDATE,
+            },
+            {
+                $Type : 'UI.DataField',
+                Label : 'Job Start Timestamp',
                 Value : JOBSTTMSTMP,
             },
             {
                 $Type : 'UI.DataField',
                 Label : 'Job End',
                 Value : JOBENDTMSTMP,
+            },
+            {
+                $Type : 'UI.DataField',
+                Label : 'Job Status',
+                Value : JOBSTATUS,
             },
             {
                 $Type : 'UI.DataField',
@@ -144,13 +154,23 @@ annotate service.JOBSUMM with @(
         },
         {
             $Type : 'UI.DataField',
-            Label : 'Job Start',
+            Label : 'Job Start Date',
+            Value : JOBSTARTDATE,
+        },
+        {
+            $Type : 'UI.DataField',
+            Label : 'Job Start Timestamp',
             Value : JOBSTTMSTMP,
         },
         {
             $Type : 'UI.DataField',
             Label : 'Job End',
             Value : JOBENDTMSTMP,
+        },
+        {
+            $Type : 'UI.DataField',
+            Label : 'Job Status',
+            Value : JOBSTATUS,
         },
         {
             $Type : 'UI.DataField',

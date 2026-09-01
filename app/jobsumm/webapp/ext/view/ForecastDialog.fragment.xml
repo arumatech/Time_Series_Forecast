@@ -67,6 +67,21 @@
         </Select>
 
         <Label
+          id="forecastJobStartDateLabel"
+          text="Job Start Date"
+          labelFor="forecastJobStartDate"
+          required="true"
+          class="sapUiSmallMarginTop" />
+
+        <DatePicker
+          id="forecastJobStartDate"
+          width="100%"
+          valueFormat="yyyy-MM-dd"
+          displayFormat="MM/dd/yyyy"
+          placeholder="Select job start date"
+          required="true" />
+
+        <Label
           id="forecastHorizonTypeLabel"
           text="Horizon Type"
           labelFor="forecastHorizonType"

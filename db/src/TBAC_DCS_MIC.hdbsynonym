@@ -1,8 +1,0 @@
-{
-  "TBAC_DCS_MIC_SOURCE": {
-    "target": {
-      "schema": "TEST_HDI_DB_1",
-      "object": "TBAC_DCS_MIC"
-    }
-  }
-}
