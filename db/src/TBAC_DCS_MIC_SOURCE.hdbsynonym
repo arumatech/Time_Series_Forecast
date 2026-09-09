@@ -1,0 +1,8 @@
+{
+  "TBAC_DCS_MIC_SOURCE": {
+    "target": {
+      "object": "TBAC_DCS_MIC",
+      "revalidate": false
+    }
+  }
+}

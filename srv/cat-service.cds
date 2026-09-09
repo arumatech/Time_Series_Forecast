@@ -32,6 +32,15 @@ service CatalogService {
   ]
   entity JOBSUMM as projection on ZRISK.JOBSUMM;
 
+    @readonly
+  @restrict: [
+    {
+      grant: 'READ',
+      to: 'JobRead'
+    }
+  ]
+  entity ForecastCorrelations as projection on ZRISK.FORCORR;
+
   @readonly
   @restrict: [
     {
@@ -64,10 +73,11 @@ service CatalogService {
       ]
     }
   ]
-  entity DCSIDS as select from INSTRUMENTS {
-    key DCSID
-  }
-  group by DCSID;
+  entity DCSIDS as
+    select from INSTRUMENTS {
+      key DCSID
+    }
+    group by DCSID;
 
   @requires: 'FlatFileManage'
   action uploadCSV(

@@ -59,8 +59,28 @@ entity JOBSUMM : managed {
     @assert.range: [
         'ENTERED',
         'RUNNING',
-        'COMPLETED'
+        'COMPLETED',
+        'FAILED'
     ];
     JOBCOMPPCT    : Integer
     @title: 'Job Completion Percentage';
+}
+
+@cds.persistence.name: 'ZRISK_FORCORR'
+entity FORCORR {
+
+    key DCSID     : String(20);
+    key MIC       : String(4);
+    key PRICETYPE : String(2);
+    key MKEYDT    : Date;
+    key PRICEDATE : Date;
+    key JOB_ID    : Integer64;
+
+    FORCORR       : String(10);
+    PRICE         : Decimal(20,8);
+    PER           : Integer;
+    UOM           : String(3);
+    CURRENCY      : String(5);
+    CREATEDBY     : String(100);
+    CREATEDAT     : Timestamp;
 }

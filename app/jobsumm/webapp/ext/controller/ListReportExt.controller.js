@@ -150,12 +150,24 @@ sap.ui.define([
         const sSearchValue =
           oEvent.getParameter("value").trim();
 
-        const oBinding =
+        const oItemsBinding =
           oEvent.getSource().getBinding("items");
 
-        oBinding.changeParameters({
-          $search: sSearchValue || undefined
+        oItemsBinding.changeParameters({
+          $search: undefined
         });
+
+        oItemsBinding.filter(
+          sSearchValue
+            ? [
+                new Filter(
+                  "DCSID",
+                  FilterOperator.Contains,
+                  sSearchValue
+                )
+              ]
+            : []
+        );
       },
 
       onDCSIDConfirm: async function (oEvent) {
@@ -204,13 +216,16 @@ sap.ui.define([
       },
 
       _clearDCSIDSearch: function () {
-        const oBinding =
-          this.oInstrumentValueHelp?.getBinding("items");
+        const oItemsBinding =
+          this.oInstrumentValueHelp
+            ?.getBinding("items");
 
-        if (oBinding) {
-          oBinding.changeParameters({
+        if (oItemsBinding) {
+          oItemsBinding.changeParameters({
             $search: undefined
           });
+
+          oItemsBinding.filter([]);
         }
       },
 

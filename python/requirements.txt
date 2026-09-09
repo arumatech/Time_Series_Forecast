@@ -1,3 +1,9 @@
+Flask
+gunicorn
 requests
+hdbcli
 pandas
+numpy
+xgboost==2.1.4
+scikit-learn
 yfinance

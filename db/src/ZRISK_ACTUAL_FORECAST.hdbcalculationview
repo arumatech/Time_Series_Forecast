@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Calculation:scenario xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:Calculation="http://www.sap.com/ndb/BiModelCalculation.ecore" id="ZRISK_ACTUAL_FORECAST" applyPrivilegeType="NONE" dataCategory="CUBE" schemaVersion="3.0" hierarchyGeneration="SQL" outputViewType="Projection" application="BAS" cacheInvalidationPeriod="NONE" enforceSqlExecution="true">
+<descriptions defaultDescription="ZRISK_ACTUAL_FORECAST"/>
+<localVariables/>
+<variableMappings/>
+<dataSources>
+  <DataSource id="ZRISK_FLATFILE">
+    <resourceUri>ZRISK_FLATFILE</resourceUri>
+  </DataSource>
+  <DataSource id="ZRISK_FORCORR">
+    <resourceUri>ZRISK_FORCORR</resourceUri>
+  </DataSource>
+</dataSources>
+<snapshotProcedures/>
+<calculationViews>
+  <calculationView xsi:type="Calculation:ProjectionView" id="Projection_1">
+    <viewAttributes>
+      <viewAttribute id="DCSID"/>
+      <viewAttribute id="MIC"/>
+      <viewAttribute id="PRICETYPE"/>
+      <viewAttribute id="MKEYDT"/>
+      <viewAttribute id="PRICEDATE"/>
+      <viewAttribute id="PRICE"/>
+      <viewAttribute id="PER"/>
+      <viewAttribute id="UOM"/>
+      <viewAttribute id="CURRENCY"/>
+    </viewAttributes>
+    <calculatedViewAttributes>
+      <calculatedViewAttribute id="TYPE" datatype="NVARCHAR" length="13" expressionLanguage="SQL">
+        <formula>'ACTUAL'</formula>
+      </calculatedViewAttribute>
+    </calculatedViewAttributes>
+    <input node="ZRISK_FLATFILE"/>
+  </calculationView>
+  <calculationView xsi:type="Calculation:ProjectionView" id="Projection_2">
+    <viewAttributes>
+      <viewAttribute id="DCSID"/>
+      <viewAttribute id="MIC"/>
+      <viewAttribute id="PRICETYPE"/>
+      <viewAttribute id="MKEYDT"/>
+      <viewAttribute id="PRICEDATE"/>
+      <viewAttribute id="PRICE"/>
+      <viewAttribute id="PER"/>
+      <viewAttribute id="UOM"/>
+      <viewAttribute id="CURRENCY"/>
+      <viewAttribute id="FORCORR"/>
+    </viewAttributes>
+    <calculatedViewAttributes>
+      <calculatedViewAttribute id="TYPE" datatype="NVARCHAR" length="13" expressionLanguage="SQL">
+        <formula>&quot;FORCORR&quot;</formula>
+      </calculatedViewAttribute>
+    </calculatedViewAttributes>
+    <input node="ZRISK_FORCORR"/>
+  </calculationView>
+  <calculationView xsi:type="Calculation:UnionView" id="Union_1">
+    <viewAttributes>
+      <viewAttribute id="DCSID"/>
+      <viewAttribute id="MIC"/>
+      <viewAttribute id="PRICETYPE"/>
+      <viewAttribute id="MKEYDT"/>
+      <viewAttribute id="PRICEDATE"/>
+      <viewAttribute id="PRICE" aggregationType="sum"/>
+      <viewAttribute id="PER" aggregationType="sum"/>
+      <viewAttribute id="UOM"/>
+      <viewAttribute id="CURRENCY"/>
+      <viewAttribute id="TYPE"/>
+    </viewAttributes>
+    <calculatedViewAttributes/>
+    <input node="Projection_1" emptyUnionBehavior="NO_ROW">
+      <mapping xsi:type="Calculation:AttributeMapping" target="DCSID" source="DCSID"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="MIC" source="MIC"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="PRICETYPE" source="PRICETYPE"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="MKEYDT" source="MKEYDT"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="PRICEDATE" source="PRICEDATE"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="PRICE" source="PRICE"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="PER" source="PER"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="UOM" source="UOM"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="CURRENCY" source="CURRENCY"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="TYPE" source="TYPE"/>
+    </input>
+    <input node="Projection_2" emptyUnionBehavior="NO_ROW">
+      <mapping xsi:type="Calculation:AttributeMapping" target="DCSID" source="DCSID"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="MIC" source="MIC"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="PRICETYPE" source="PRICETYPE"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="MKEYDT" source="MKEYDT"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="PRICEDATE" source="PRICEDATE"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="PRICE" source="PRICE"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="PER" source="PER"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="UOM" source="UOM"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="CURRENCY" source="CURRENCY"/>
+      <mapping xsi:type="Calculation:AttributeMapping" target="TYPE" source="TYPE"/>
+    </input>
+  </calculationView>
+</calculationViews>
+<logicalModel id="Union_1">
+  <attributes>
+    <attribute id="DCSID" order="1" displayAttribute="false" attributeHierarchyActive="false">
+      <descriptions defaultDescription="DCSID"/>
+      <keyMapping columnObjectName="Union_1" columnName="DCSID"/>
+    </attribute>
+    <attribute id="MIC" order="2" displayAttribute="false" attributeHierarchyActive="false">
+      <descriptions defaultDescription="MIC"/>
+      <keyMapping columnObjectName="Union_1" columnName="MIC"/>
+    </attribute>
+    <attribute id="PRICETYPE" order="3" displayAttribute="false" attributeHierarchyActive="false">
+      <descriptions defaultDescription="PRICETYPE"/>
+      <keyMapping columnObjectName="Union_1" columnName="PRICETYPE"/>
+    </attribute>
+    <attribute id="MKEYDT" order="4" displayAttribute="false" attributeHierarchyActive="false">
+      <descriptions defaultDescription="MKEYDT"/>
+      <keyMapping columnObjectName="Union_1" columnName="MKEYDT"/>
+    </attribute>
+    <attribute id="PRICEDATE" order="5" displayAttribute="false" attributeHierarchyActive="false">
+      <descriptions defaultDescription="PRICEDATE"/>
+      <keyMapping columnObjectName="Union_1" columnName="PRICEDATE"/>
+    </attribute>
+    <attribute id="UOM" order="8" displayAttribute="false" attributeHierarchyActive="false">
+      <descriptions defaultDescription="UOM"/>
+      <keyMapping columnObjectName="Union_1" columnName="UOM"/>
+    </attribute>
+    <attribute id="CURRENCY" order="9" displayAttribute="false" attributeHierarchyActive="false">
+      <descriptions defaultDescription="CURRENCY"/>
+      <keyMapping columnObjectName="Union_1" columnName="CURRENCY"/>
+    </attribute>
+    <attribute id="TYPE" order="10" displayAttribute="false" attributeHierarchyActive="false">
+      <descriptions defaultDescription="TYPE"/>
+      <keyMapping columnObjectName="Union_1" columnName="TYPE"/>
+    </attribute>
+  </attributes>
+  <calculatedAttributes/>
+  <baseMeasures>
+    <measure id="PRICE" order="6" aggregationType="sum" measureType="simple">
+      <descriptions defaultDescription="PRICE"/>
+      <measureMapping columnObjectName="Union_1" columnName="PRICE"/>
+      <exceptionAggregationMetadata/>
+    </measure>
+    <measure id="PER" order="7" aggregationType="sum" measureType="simple">
+      <descriptions defaultDescription="PER"/>
+      <measureMapping columnObjectName="Union_1" columnName="PER"/>
+      <exceptionAggregationMetadata/>
+    </measure>
+  </baseMeasures>
+  <calculatedMeasures/>
+  <restrictedMeasures/>
+  <localDimensions/>
+</logicalModel>
+<layout>
+  <shapes>
+    <shape expanded="true" modelObjectName="Output" modelObjectNameSpace="MeasureGroup">
+      <upperLeftCorner x="221" y="112"/>
+    
+      <rectangleSize width="160"/>
+    </shape>
+  
+    <shape expanded="true" modelObjectName="Projection_1" modelObjectNameSpace="CalculationView">
+      <upperLeftCorner x="92" y="356"/>
+      <rectangleSize height="30" width="160"/>
+    </shape>
+    <shape expanded="true" modelObjectName="Projection_2" modelObjectNameSpace="CalculationView">
+      <upperLeftCorner x="302" y="356"/>
+      <rectangleSize height="30" width="160"/>
+    </shape>
+    <shape expanded="true" modelObjectName="Union_1" modelObjectNameSpace="CalculationView">
+      <upperLeftCorner x="221" y="217"/>
+      <rectangleSize height="30" width="160"/>
+    </shape>
+  </shapes>
+</layout>
+</Calculation:scenario>
