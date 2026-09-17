@@ -2,7 +2,9 @@
   "TBAC_DCS_MIC_SOURCE": {
     "target": {
       "object": "TBAC_DCS_MIC",
-      "revalidate": false
+      // Commented by Vishal
+     // "revalidate": false,
+      "schema": "ED194A70C90D4245A50BFC4AC8AD7160"
     }
   }
 }
