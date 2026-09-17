@@ -21,7 +21,7 @@ app = Flask(__name__)
 # Configuration
 # ============================================================
 
-DESTINATION_NAME = "EIA_API"
+DESTINATION_NAME = "EIA_WTI_API"
 FRED_DESTINATION_NAME = "FRED_API"
 
 # Name of the MTA service binding
