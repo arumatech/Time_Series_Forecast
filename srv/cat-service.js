@@ -131,7 +131,13 @@ function convertMaturityDate(sValue) {
     return null;
   }
 
-  const aParts = String(sValue).trim().split("/");
+  const sDate = String(sValue).trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(sDate)) {
+    return sDate;
+  }
+
+  const aParts = sDate.split("/");
 
   if (aParts.length !== 3) {
     return null;
@@ -151,7 +157,13 @@ function convertPriceDate(sValue) {
     return null;
   }
 
-  const aParts = String(sValue).trim().split("/");
+  const sDate = String(sValue).trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(sDate)) {
+    return sDate;
+  }
+
+  const aParts = sDate.split("/");
 
   if (aParts.length !== 3) {
     return null;
