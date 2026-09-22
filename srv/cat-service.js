@@ -1,10 +1,26 @@
 const cds = require("@sap/cds");
 
+const SUPPORTED_MODELS = new Set([
+  "XGBoost",
+  "HANA_APL"
+]);
+
+function validateModel(req) {
+  if (!SUPPORTED_MODELS.has(req.data.MODEL)) {
+    return req.reject(
+      400,
+      "Select a supported model: XGBoost or HANA APL"
+    );
+  }
+}
+
 module.exports = cds.service.impl(function () {
   const { FLATFILE } = cds.entities("ZRISK");
   const { UPSERT } = cds.ql;
 
   this.before("CREATE", "JOBSUMM", async (req) => {
+    validateModel(req);
+
     if (!req.data.JOBSTARTDATE) {
       return req.reject(
         400,
@@ -25,6 +41,17 @@ module.exports = cds.service.impl(function () {
     );
 
     req.data.JOB_ID = result.JOB_ID;
+  });
+
+  this.before("UPDATE", "JOBSUMM", (req) => {
+    if (
+      Object.prototype.hasOwnProperty.call(
+        req.data,
+        "MODEL"
+      )
+    ) {
+      validateModel(req);
+    }
   });
 
   this.on("uploadCSV", async (req) => {

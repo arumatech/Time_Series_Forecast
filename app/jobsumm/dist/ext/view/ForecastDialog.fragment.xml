@@ -27,9 +27,9 @@
               key="XGBoost"
               text="XGBoost" />
             <core:Item
-              id="forecastModelARIMA"
-              key="ARIMA"
-              text="ARIMA" />
+              id="forecastModelHANAAPL"
+              key="HANA_APL"
+              text="HANA APL" />
           </items>
         </Select>
 

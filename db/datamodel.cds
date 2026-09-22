@@ -35,7 +35,7 @@ entity JOBSUMM : managed {
     FORCORR       : String(10)
     @title: 'Values - For or Corr';
     MODEL         : String(10)
-    @title: 'XGBoost, ARIMA';
+    @title: 'XGBoost, HANA APL';
     SRCDCSID      : String(20)
     @title: 'Source DCSID';
     SRCMIC        : String(4)

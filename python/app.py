@@ -12,6 +12,8 @@ from hdbcli import dbapi
 
 from models.gulf_gasoline_xgboost import train_and_forecast
 from models.flat_file_xgboost import train_and_forecast_flat_file
+from models.flat_file_hana_apl import train_and_forecast_hana_apl
+from math import isfinite
 
 
 app = Flask(__name__)
@@ -21,7 +23,7 @@ app = Flask(__name__)
 # Configuration
 # ============================================================
 
-DESTINATION_NAME = "EIA_WTI_API"
+DESTINATION_NAME = "EIA_API"
 FRED_DESTINATION_NAME = "FRED_API"
 
 # Name of the MTA service binding
@@ -323,6 +325,17 @@ def process_job(job):
             start_timestamp=True
         )
 
+        # Only forecast jobs are supported by this worker.
+        if job.get("FORCORR") != "For":
+            raise ValueError("Only forecast jobs are supported")
+
+        model_name = str(job.get("MODEL") or "").strip()
+        if model_name not in {"XGBoost", "HANA_APL"}:
+            raise ValueError(
+                f"Unsupported model '{model_name}'. "
+                "Select XGBoost or HANA APL."
+            )
+
         # ----------------------------------------------------
         # 2. Read flat-file data from HANA
         # ----------------------------------------------------
@@ -375,6 +388,12 @@ def process_job(job):
         horizon = int(job["HORVAL"])
         horizon_type = job["HORTY"]
 
+        if horizon <= 0:
+            raise ValueError("HORVAL must be a positive integer")
+        if horizon_type not in {"D", "W", "M"}:
+            raise ValueError("HORTY must be D, W, or M")
+
+        # Preserve the existing calendar-day horizon convention.
         if horizon_type == "W":
             horizon = horizon * 7
         elif horizon_type == "M":
@@ -424,7 +443,7 @@ def process_job(job):
         metadata_row = metadata_rows.iloc[0]
 
         # ----------------------------------------------------
-        # 4. Run XGBoost forecast
+        # 4. Run the model selected in JOBSUMM
         # ----------------------------------------------------
 
         update_job(
@@ -432,24 +451,55 @@ def process_job(job):
             completion=50
         )
 
-        forecasts = train_and_forecast_flat_file(
-            df=df,
-            dcsid=dcsid,
-            mic=mic,
-            pricetype=None,
-            horizon=int(horizon)
-        )
+        print(f"JOB_ID {job_id}: running {model_name} for {dcsid} / {mic}")
 
-        # The model normally dates results after the final historical
-        # row. Replace those dates so output starts on JOBSTARTDATE.
-        for index, forecast in enumerate(forecasts):
-            forecast_date = (
-                forecast_start_date
-                + pd.Timedelta(days=index)
+        if model_name == "XGBoost":
+            forecasts = train_and_forecast_flat_file(
+                df=df,
+                dcsid=dcsid,
+                mic=mic,
+                pricetype=None,
+                horizon=horizon
             )
 
-            forecast["date"] = (
-                forecast_date.strftime("%Y-%m-%d")
+            # Preserve existing XGBoost behavior: output begins on
+            # JOBSTARTDATE, even when the final historical date is earlier.
+            for index, forecast in enumerate(forecasts):
+                forecast_date = (
+                    forecast_start_date
+                    + pd.Timedelta(days=index)
+                )
+                forecast["date"] = forecast_date.strftime("%Y-%m-%d")
+        else:
+            forecasts = train_and_forecast_hana_apl(
+                df=df,
+                dcsid=dcsid,
+                mic=mic,
+                credentials=get_hana_credentials(),
+                pricetype=None,
+                horizon=horizon,
+                forecast_start_date=forecast_start_date
+            )
+
+        # Validate the entire result before inserting any forecast rows.
+        # APL already returns the requested dates; do not relabel them.
+        expected_dates = pd.date_range(
+            forecast_start_date,
+            periods=horizon,
+            freq="D"
+        ).strftime("%Y-%m-%d").tolist()
+
+        if not isinstance(forecasts, list) or len(forecasts) != horizon:
+            raise ValueError(
+                f"{model_name} did not return {horizon} forecast rows"
+            )
+        if [row["date"] for row in forecasts] != expected_dates:
+            raise ValueError(
+                f"{model_name} returned unexpected forecast dates"
+            )
+        if not all(isfinite(float(row["predicted_value"])) for row in forecasts):
+            raise ValueError(
+                f"{model_name} returned invalid forecast prices"
             )
 
         # ----------------------------------------------------
@@ -617,6 +667,15 @@ def save_forecast_results(forecasts):
 
 def save_job_forecast_results(job, forecasts, metadata_row):
 
+    # Keep JOBSUMM's job codes; store descriptive labels in result rows.
+    result_types = {
+        "For": "FORECAST",
+        "Corr": "CORRELATION",
+        "FORECAST": "FORECAST",
+        "CORRELATION": "CORRELATION",
+    }
+    result_type = result_types[job["FORCORR"]]
+
     connection = get_hana_connection()
     cursor = connection.cursor()
 
@@ -656,7 +715,7 @@ def save_job_forecast_results(job, forecasts, metadata_row):
                     metadata_row["MKEYDT"],
                     forecast["date"],
                     job["JOB_ID"],
-                    job["FORCORR"],
+                    result_type,
                     float(forecast["predicted_value"]),
                     int(metadata_row["PER"])
                     if pd.notna(metadata_row["PER"])
