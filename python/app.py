@@ -6,6 +6,7 @@ import pandas as pd
 import threading
 import time
 from datetime import date, datetime
+from math import isfinite
 
 from flask import Flask, jsonify, request
 from hdbcli import dbapi
@@ -13,7 +14,13 @@ from hdbcli import dbapi
 from models.gulf_gasoline_xgboost import train_and_forecast
 from models.flat_file_xgboost import train_and_forecast_flat_file
 from models.flat_file_hana_apl import train_and_forecast_hana_apl
-from math import isfinite
+
+# Optional API-factor model.
+# Your existing app already uses this function for A3 + GG.
+try:
+    from models.flat_file_xgboost import train_and_forecast_flat_file_with_api
+except ImportError:
+    train_and_forecast_flat_file_with_api = None
 
 
 app = Flask(__name__)
@@ -26,7 +33,6 @@ app = Flask(__name__)
 DESTINATION_NAME = "EIA_API"
 FRED_DESTINATION_NAME = "FRED_API"
 
-# Name of the MTA service binding
 HANA_SERVICE_NAME = "TIME_SERIES_FORECAST-db"
 
 TABLE_NAME = '"FORECAST_DATA_EIA_WTI_PRICES"'
@@ -35,10 +41,18 @@ FRED_TABLE_NAME = '"FORECAST_DATA_FRED_CURRENCY"'
 FORECAST_RESULTS_TABLE = '"FORECAST_DATA_FORECAST_RESULTS"'
 FORCORR_TABLE = '"ZRISK_FORCORR"'
 
-#Added on 02/09/2026
 JOBSUMM_TABLE = '"ZRISK_JOBSUMM"'
-#FLAT_FILE_TABLE = '"Z_GMDA_FLATFILE"'
+
 FLAT_FILE_TABLE = '"ZRISK_FLATFILE"'
+
+
+# ============================================================
+# Flat-file API-factor forecast configuration
+# ============================================================
+
+API_FORECAST_DCSID = "A3"
+API_FORECAST_MIC = "GG"
+
 
 # ============================================================
 # Read VCAP_SERVICES
@@ -64,10 +78,7 @@ def get_hana_credentials():
 
     services = get_vcap_services()
 
-    # --------------------------------------------------------
-    # First: look for the exact MTA service binding
-    # --------------------------------------------------------
-
+    # First: exact MTA service binding
     for service_type, service_list in services.items():
 
         for service in service_list:
@@ -79,10 +90,7 @@ def get_hana_credentials():
                 if credentials:
                     return credentials
 
-    # --------------------------------------------------------
-    # Fallback: identify a HANA service by credentials
-    # --------------------------------------------------------
-
+    # Fallback: identify HANA service by credentials
     for service_type, service_list in services.items():
 
         for service in service_list:
@@ -130,9 +138,9 @@ def get_hana_connection():
 
     return connection
 
+
 # ============================================================
 # JOBSUMM - Get Pending Job
-#Added on 02/09/2026
 # ============================================================
 
 def get_pending_job():
@@ -192,7 +200,6 @@ def get_pending_job():
 
 # ============================================================
 # JOBSUMM - Update Job
-#Added on 02/09/2026
 # ============================================================
 
 def update_job(
@@ -224,6 +231,8 @@ def update_job(
         updates.append('"JOBENDTMSTMP" = CURRENT_TIMESTAMP')
 
     if not updates:
+        cursor.close()
+        connection.close()
         return
 
     sql = f"""
@@ -252,7 +261,6 @@ def update_job(
 
 # ============================================================
 # Read Flat File Data from HANA
-#Added on 02/09/2026
 # ============================================================
 
 def read_flat_file_from_hana():
@@ -262,7 +270,7 @@ def read_flat_file_from_hana():
 
     sql = f"""
         SELECT
-           "DCSID",
+            "DCSID",
             "MIC",
             "PRICETYPE",
             "MKEYDT",
@@ -294,16 +302,56 @@ def read_flat_file_from_hana():
             "FILENAME"
         ]
 
-        return pd.DataFrame(rows, columns=columns)
+        return pd.DataFrame(
+            rows,
+            columns=columns
+        )
 
     finally:
 
         cursor.close()
         connection.close()
 
+
+# ============================================================
+# Read WTI Data from HANA
+# ============================================================
+
+def read_wti_from_hana():
+
+    connection = get_hana_connection()
+    cursor = connection.cursor()
+
+    sql = f"""
+        SELECT
+            "DATE",
+            "VALUE"
+        FROM {TABLE_NAME}
+        ORDER BY "DATE"
+    """
+
+    try:
+
+        cursor.execute(sql)
+
+        rows = cursor.fetchall()
+
+        return pd.DataFrame(
+            rows,
+            columns=[
+                "DATE",
+                "VALUE"
+            ]
+        )
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+
 # ============================================================
 # JOBSUMM Worker
-# Added on 03/09/2026
 # ============================================================
 
 def process_job(job):
@@ -312,7 +360,9 @@ def process_job(job):
 
     try:
 
-        print(f"Starting JOB_ID: {job_id}")
+        print(
+            f"Starting JOB_ID: {job_id}"
+        )
 
         # ----------------------------------------------------
         # 1. Mark job as RUNNING
@@ -325,12 +375,20 @@ def process_job(job):
             start_timestamp=True
         )
 
-        # Only forecast jobs are supported by this worker.
         if job.get("FORCORR") != "For":
-            raise ValueError("Only forecast jobs are supported")
+            raise ValueError(
+                "Only forecast jobs are supported"
+            )
 
-        model_name = str(job.get("MODEL") or "").strip()
-        if model_name not in {"XGBoost", "HANA_APL"}:
+        model_name = str(
+            job.get("MODEL") or ""
+        ).strip()
+
+        if model_name not in {
+            "XGBoost",
+            "HANA_APL"
+        }:
+
             raise ValueError(
                 f"Unsupported model '{model_name}'. "
                 "Select XGBoost or HANA APL."
@@ -348,18 +406,22 @@ def process_job(job):
         df = read_flat_file_from_hana()
 
         if df.empty:
+
             raise Exception(
                 "ZRISK_FLATFILE contains no data"
             )
 
-        # Use JOBSTARTDATE as the first forecast date. Only
-        # historical prices before that date may train the model.
+        # ----------------------------------------------------
+        # Forecast start date
+        # ----------------------------------------------------
+
         forecast_start_date = pd.to_datetime(
             job["JOBSTARTDATE"],
             errors="coerce"
         )
 
         if pd.isna(forecast_start_date):
+
             raise Exception(
                 "JOBSTARTDATE is required and must be a valid date"
             )
@@ -374,6 +436,7 @@ def process_job(job):
         ].copy()
 
         if df.empty:
+
             raise Exception(
                 "No historical data exists before JOBSTARTDATE"
             )
@@ -389,52 +452,90 @@ def process_job(job):
         horizon_type = job["HORTY"]
 
         if horizon <= 0:
-            raise ValueError("HORVAL must be a positive integer")
-        if horizon_type not in {"D", "W", "M"}:
-            raise ValueError("HORTY must be D, W, or M")
+            raise ValueError(
+                "HORVAL must be a positive integer"
+            )
 
-        # Preserve the existing calendar-day horizon convention.
+        if horizon_type not in {
+            "D",
+            "W",
+            "M"
+        }:
+            raise ValueError(
+                "HORTY must be D, W, or M"
+            )
+
         if horizon_type == "W":
             horizon = horizon * 7
+
         elif horizon_type == "M":
             horizon = horizon * 30
 
         if not dcsid:
-            raise Exception("TARDCSID is required")
+            raise Exception(
+                "TARDCSID is required"
+            )
 
         if not mic:
-            raise Exception("TARMIC is required")
+            raise Exception(
+                "TARMIC is required"
+            )
 
         if not horizon:
-            raise Exception("HORVAL is required")
+            raise Exception(
+                "HORVAL is required"
+            )
 
-        # Use the flat-file row immediately before JOBSTARTDATE
-        # as the metadata template for every row in this job.
+        # ----------------------------------------------------
+        # Metadata row
+        # ----------------------------------------------------
+
         metadata_date = (
             forecast_start_date
             - pd.Timedelta(days=1)
         )
 
         metadata_rows = df[
-            (df["DCSID"].astype(str).str.strip() == str(dcsid).strip()) &
-            (df["MIC"].astype(str).str.strip() == str(mic).strip()) &
-            (df["PRICEDATE"] <= metadata_date)
+            (
+                df["DCSID"]
+                .astype(str)
+                .str.strip()
+                == str(dcsid).strip()
+            )
+            &
+            (
+                df["MIC"]
+                .astype(str)
+                .str.strip()
+                == str(mic).strip()
+            )
+            &
+            (
+                df["PRICEDATE"]
+                <= metadata_date
+            )
         ]
 
         if not metadata_rows.empty:
-            latest_metadata_date = metadata_rows["PRICEDATE"].max()
+
+            latest_metadata_date = (
+                metadata_rows["PRICEDATE"].max()
+            )
 
             metadata_rows = metadata_rows[
-                metadata_rows["PRICEDATE"] == latest_metadata_date
+                metadata_rows["PRICEDATE"]
+                == latest_metadata_date
             ]
 
         if metadata_rows.empty:
+
             raise Exception(
                 "No flat-file row exists for the selected "
                 "DCSID / MIC before JOBSTARTDATE"
             )
 
         if len(metadata_rows) > 1:
+
             raise Exception(
                 "Multiple flat-file rows exist for the selected "
                 "DCSID / MIC on the latest available date"
@@ -443,7 +544,7 @@ def process_job(job):
         metadata_row = metadata_rows.iloc[0]
 
         # ----------------------------------------------------
-        # 4. Run the model selected in JOBSUMM
+        # 4. Run selected model
         # ----------------------------------------------------
 
         update_job(
@@ -451,26 +552,143 @@ def process_job(job):
             completion=50
         )
 
-        print(f"JOB_ID {job_id}: running {model_name} for {dcsid} / {mic}")
+        print(
+            f"JOB_ID {job_id}: "
+            f"running {model_name} for "
+            f"{dcsid} / {mic}"
+        )
+
+        # ====================================================
+        # XGBOOST
+        # ====================================================
 
         if model_name == "XGBoost":
-            forecasts = train_and_forecast_flat_file(
-                df=df,
-                dcsid=dcsid,
-                mic=mic,
-                pricetype=None,
-                horizon=horizon
+
+            # ------------------------------------------------
+            # A3 + GG
+            # ------------------------------------------------
+            # A3 + GG uses the WTI API-factor model.
+            # Everything else uses the standard flat-file model.
+            # ------------------------------------------------
+
+            if (
+                str(dcsid).strip()
+                == API_FORECAST_DCSID
+                and
+                str(mic).strip()
+                == API_FORECAST_MIC
+            ):
+
+                print(
+                    f"JOB_ID {job_id}: "
+                    f"using API-factor XGBoost "
+                    f"for {dcsid} / {mic}"
+                )
+
+                if train_and_forecast_flat_file_with_api is None:
+
+                    raise ImportError(
+                        "train_and_forecast_flat_file_with_api "
+                        "is not available in "
+                        "models.flat_file_xgboost"
+                    )
+
+                # ------------------------------------------------
+                # Read WTI API data already stored in HANA
+                # ------------------------------------------------
+
+                wti_df = read_wti_from_hana()
+
+                if wti_df.empty:
+
+                    raise Exception(
+                        "FORECAST_DATA_EIA_WTI_PRICES "
+                        "contains no data"
+                    )
+
+                # ------------------------------------------------
+                # Run API-factor model
+                # ------------------------------------------------
+
+                forecasts = (
+                    train_and_forecast_flat_file_with_api(
+                        flat_df=df,
+                        dcsid=dcsid,
+                        mic=mic,
+                        pricetype=None,
+                        horizon=horizon,
+                        api_factors=[
+                            {
+                                "df": wti_df,
+                                "value_column": "VALUE",
+                                "name": "WTI"
+                            }
+                        ]
+                    )
+                )
+
+                # API-factor model may return dates based on
+                # historical data, so align them to JOBSTARTDATE.
+                for index, forecast in enumerate(
+                    forecasts
+                ):
+
+                    forecast_date = (
+                        forecast_start_date
+                        + pd.Timedelta(days=index)
+                    )
+
+                    forecast["date"] = (
+                        forecast_date.strftime(
+                            "%Y-%m-%d"
+                        )
+                    )
+
+            else:
+
+                print(
+                    f"JOB_ID {job_id}: "
+                    f"using standard XGBoost "
+                    f"for {dcsid} / {mic}"
+                )
+
+                forecasts = train_and_forecast_flat_file(
+                    df=df,
+                    dcsid=dcsid,
+                    mic=mic,
+                    pricetype=None,
+                    horizon=horizon
+                )
+
+                # Preserve existing XGBoost behavior:
+                # forecast begins on JOBSTARTDATE.
+                for index, forecast in enumerate(
+                    forecasts
+                ):
+
+                    forecast_date = (
+                        forecast_start_date
+                        + pd.Timedelta(days=index)
+                    )
+
+                    forecast["date"] = (
+                        forecast_date.strftime(
+                            "%Y-%m-%d"
+                        )
+                    )
+
+        # ====================================================
+        # HANA APL
+        # ====================================================
+
+        elif model_name == "HANA_APL":
+
+            print(
+                f"JOB_ID {job_id}: "
+                f"using HANA APL "
+                f"for {dcsid} / {mic}"
             )
 
-            # Preserve existing XGBoost behavior: output begins on
-            # JOBSTARTDATE, even when the final historical date is earlier.
-            for index, forecast in enumerate(forecasts):
-                forecast_date = (
-                    forecast_start_date
-                    + pd.Timedelta(days=index)
-                )
-                forecast["date"] = forecast_date.strftime("%Y-%m-%d")
-        else:
             forecasts = train_and_forecast_hana_apl(
                 df=df,
                 dcsid=dcsid,
@@ -481,25 +699,55 @@ def process_job(job):
                 forecast_start_date=forecast_start_date
             )
 
-        # Validate the entire result before inserting any forecast rows.
-        # APL already returns the requested dates; do not relabel them.
-        expected_dates = pd.date_range(
-            forecast_start_date,
-            periods=horizon,
-            freq="D"
-        ).strftime("%Y-%m-%d").tolist()
+        # ----------------------------------------------------
+        # Validate entire forecast
+        # ----------------------------------------------------
 
-        if not isinstance(forecasts, list) or len(forecasts) != horizon:
-            raise ValueError(
-                f"{model_name} did not return {horizon} forecast rows"
+        expected_dates = (
+            pd.date_range(
+                forecast_start_date,
+                periods=horizon,
+                freq="D"
             )
-        if [row["date"] for row in forecasts] != expected_dates:
-            raise ValueError(
-                f"{model_name} returned unexpected forecast dates"
+            .strftime("%Y-%m-%d")
+            .tolist()
+        )
+
+        if (
+            not isinstance(
+                forecasts,
+                list
             )
-        if not all(isfinite(float(row["predicted_value"])) for row in forecasts):
+            or len(forecasts) != horizon
+        ):
+
             raise ValueError(
-                f"{model_name} returned invalid forecast prices"
+                f"{model_name} did not return "
+                f"{horizon} forecast rows"
+            )
+
+        if [
+            row["date"]
+            for row in forecasts
+        ] != expected_dates:
+
+            raise ValueError(
+                f"{model_name} returned "
+                "unexpected forecast dates"
+            )
+
+        if not all(
+            isfinite(
+                float(
+                    row["predicted_value"]
+                )
+            )
+            for row in forecasts
+        ):
+
+            raise ValueError(
+                f"{model_name} returned "
+                "invalid forecast prices"
             )
 
         # ----------------------------------------------------
@@ -523,7 +771,8 @@ def process_job(job):
 
         print(
             f"JOB_ID {job_id}: "
-            f"{save_result['records_saved']} records saved"
+            f"{save_result['records_saved']} "
+            f"records saved"
         )
 
         # ----------------------------------------------------
@@ -565,7 +814,9 @@ def process_job(job):
 
 def job_worker():
 
-    print("JOBSUMM worker started")
+    print(
+        "JOBSUMM worker started"
+    )
 
     while True:
 
@@ -595,10 +846,8 @@ def job_worker():
             time.sleep(5)
 
 
-
 # ============================================================
 # Save Forecast Results into HANA
-# Added on 25/08/2026
 # ============================================================
 
 def save_forecast_results(forecasts):
@@ -606,7 +855,10 @@ def save_forecast_results(forecasts):
     connection = get_hana_connection()
     cursor = connection.cursor()
 
-    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_id = datetime.now().strftime(
+        "%Y%m%d_%H%M%S"
+    )
+
     run_date = date.today()
 
     sql = f"""
@@ -636,7 +888,9 @@ def save_forecast_results(forecasts):
                     forecast["date"],
                     "Gulf Gasoline",
                     "XGBoost",
-                    float(forecast["predicted_value"]),
+                    float(
+                        forecast["predicted_value"]
+                    ),
                     "USD/gal",
                     run_date
                 )
@@ -661,20 +915,16 @@ def save_forecast_results(forecasts):
         "records_saved": saved
     }
 
+
 # ============================================================
 # Save Job Forecast Results into FORCORR
 # ============================================================
 
-def save_job_forecast_results(job, forecasts, metadata_row):
-
-    # Keep JOBSUMM's job codes; store descriptive labels in result rows.
-    result_types = {
-        "For": "FORECAST",
-        "Corr": "CORRELATION",
-        "FORECAST": "FORECAST",
-        "CORRELATION": "CORRELATION",
-    }
-    result_type = result_types[job["FORCORR"]]
+def save_job_forecast_results(
+    job,
+    forecasts,
+    metadata_row
+):
 
     connection = get_hana_connection()
     cursor = connection.cursor()
@@ -700,6 +950,7 @@ def save_job_forecast_results(job, forecasts, metadata_row):
     """
 
     completion_time = datetime.now()
+
     saved = 0
 
     try:
@@ -715,10 +966,16 @@ def save_job_forecast_results(job, forecasts, metadata_row):
                     metadata_row["MKEYDT"],
                     forecast["date"],
                     job["JOB_ID"],
-                    result_type,
-                    float(forecast["predicted_value"]),
-                    int(metadata_row["PER"])
-                    if pd.notna(metadata_row["PER"])
+                    job["FORCORR"],
+                    float(
+                        forecast["predicted_value"]
+                    ),
+                    int(
+                        metadata_row["PER"]
+                    )
+                    if pd.notna(
+                        metadata_row["PER"]
+                    )
                     else None,
                     metadata_row["UOM"],
                     metadata_row["CURRENCY"],
@@ -745,68 +1002,9 @@ def save_job_forecast_results(job, forecasts, metadata_row):
         "records_saved": saved
     }
 
-# ============================================================
-# JOBSUMM - Update Job
-#Added on 02/09/2026
-# ============================================================
-
-def update_job(
-    job_id,
-    status=None,
-    completion=None,
-    start_timestamp=False,
-    end_timestamp=False
-):
-
-    connection = get_hana_connection()
-    cursor = connection.cursor()
-
-    updates = []
-    values = []
-
-    if status is not None:
-        updates.append('"JOBSTATUS" = ?')
-        values.append(status)
-
-    if completion is not None:
-        updates.append('"JOBCOMPPCT" = ?')
-        values.append(completion)
-
-    if start_timestamp:
-        updates.append('"JOBSTTMSTMP" = CURRENT_TIMESTAMP')
-
-    if end_timestamp:
-        updates.append('"JOBENDTMSTMP" = CURRENT_TIMESTAMP')
-
-    if not updates:
-        return
-
-    sql = f"""
-        UPDATE {JOBSUMM_TABLE}
-        SET {", ".join(updates)}
-        WHERE "JOB_ID" = ?
-    """
-
-    values.append(job_id)
-
-    try:
-
-        cursor.execute(sql, values)
-        connection.commit()
-
-    except Exception:
-
-        connection.rollback()
-        raise
-
-    finally:
-
-        cursor.close()
-        connection.close()
 
 # ============================================================
 # Start JOBSUMM Worker
-# Added on 03/09/2026
 # ============================================================
 
 worker_thread = threading.Thread(
@@ -815,6 +1013,7 @@ worker_thread = threading.Thread(
 )
 
 worker_thread.start()
+
 
 # ============================================================
 # Get Destination Service credentials
@@ -828,21 +1027,28 @@ def get_destination_credentials():
 
         for service in service_list:
 
-            if service.get("name") == "Forecast_model_cap-destination":
+            if (
+                service.get("name")
+                == "Forecast_model_cap-destination"
+            ):
 
-                credentials = service.get("credentials")
+                credentials = service.get(
+                    "credentials"
+                )
 
                 if credentials:
                     return credentials
 
-    # Fallback: look for destination service
+    # Fallback
     for service_type, service_list in services.items():
 
         if service_type.lower() == "destination":
 
             for service in service_list:
 
-                credentials = service.get("credentials")
+                credentials = service.get(
+                    "credentials"
+                )
 
                 if credentials:
                     return credentials
@@ -859,39 +1065,55 @@ def get_destination_credentials():
 
 def get_destination_token(credentials):
 
-    client_id = credentials.get("clientid")
-    client_secret = credentials.get("clientsecret")
+    client_id = credentials.get(
+        "clientid"
+    )
+
+    client_secret = credentials.get(
+        "clientsecret"
+    )
 
     if not client_id:
+
         raise Exception(
             "Destination Service clientid not found"
         )
 
     if not client_secret:
+
         raise Exception(
             "Destination Service clientsecret not found"
         )
 
-    # Different service versions can expose the token URL
-    # differently, so support both forms.
-
-    token_url = credentials.get("token_url")
+    token_url = credentials.get(
+        "token_url"
+    )
 
     if not token_url:
 
-        base_url = credentials.get("url")
+        base_url = credentials.get(
+            "url"
+        )
 
         if base_url:
-            token_url = base_url.rstrip("/") + "/oauth/token"
+
+            token_url = (
+                base_url.rstrip("/")
+                + "/oauth/token"
+            )
 
     if not token_url:
+
         raise Exception(
             "Destination Service token URL not found"
         )
 
     response = requests.post(
         token_url,
-        auth=(client_id, client_secret),
+        auth=(
+            client_id,
+            client_secret
+        ),
         data={
             "grant_type": "client_credentials"
         },
@@ -900,7 +1122,9 @@ def get_destination_token(credentials):
 
     response.raise_for_status()
 
-    return response.json()["access_token"]
+    return response.json()[
+        "access_token"
+    ]
 
 
 # ============================================================
@@ -911,13 +1135,19 @@ def get_destination():
 
     credentials = get_destination_credentials()
 
-    token = get_destination_token(credentials)
+    token = get_destination_token(
+        credentials
+    )
 
-    destination_url = credentials.get("uri")
+    destination_url = credentials.get(
+        "uri"
+    )
 
     if not destination_url:
+
         raise Exception(
-            "Destination Service URI not found in credentials"
+            "Destination Service URI not found "
+            "in credentials"
         )
 
     url = (
@@ -940,7 +1170,7 @@ def get_destination():
 
 
 # ============================================================
-# Fetch WTI from EIA using Destination Service
+# Fetch WTI from EIA
 # ============================================================
 
 def fetch_wti():
@@ -952,9 +1182,12 @@ def fetch_wti():
         {}
     )
 
-    eia_url = destination_properties.get("URL")
+    eia_url = destination_properties.get(
+        "URL"
+    )
 
     if not eia_url:
+
         raise Exception(
             "URL not found in EIA_WTI_API destination"
         )
@@ -964,6 +1197,7 @@ def fetch_wti():
     )
 
     if not eia_key:
+
         raise Exception(
             "URL.queries.api_key not found in "
             "EIA_WTI_API destination"
@@ -995,12 +1229,10 @@ def fetch_wti():
 
         response_data = response.json()
 
-        data = response_data.get(
-            "response",
-            {}
-        ).get(
-            "data",
-            []
+        data = (
+            response_data
+            .get("response", {})
+            .get("data", [])
         )
 
         if not data:
@@ -1015,21 +1247,28 @@ def fetch_wti():
 
     return rows
 
+
 # ============================================================
-# Fetch FRED currency data using Destination Service
+# Fetch FRED currency data
 # ============================================================
 
 def fetch_fred_series(series_id):
 
     credentials = get_destination_credentials()
 
-    token = get_destination_token(credentials)
+    token = get_destination_token(
+        credentials
+    )
 
-    destination_url = credentials.get("uri")
+    destination_url = credentials.get(
+        "uri"
+    )
 
     if not destination_url:
+
         raise Exception(
-            "Destination Service URI not found in credentials"
+            "Destination Service URI not found "
+            "in credentials"
         )
 
     url = (
@@ -1055,9 +1294,12 @@ def fetch_fred_series(series_id):
         {}
     )
 
-    fred_url = destination_properties.get("URL")
+    fred_url = destination_properties.get(
+        "URL"
+    )
 
     if not fred_url:
+
         raise Exception(
             "URL not found in FRED_API destination"
         )
@@ -1067,8 +1309,10 @@ def fetch_fred_series(series_id):
     )
 
     if not fred_key:
+
         raise Exception(
-            "URL.queries.api_key not found in FRED_API destination"
+            "URL.queries.api_key not found in "
+            "FRED_API destination"
         )
 
     params = {
@@ -1079,17 +1323,22 @@ def fetch_fred_series(series_id):
     }
 
     response = requests.get(
-        fred_url.rstrip("/") + "/fred/series/observations",
+        fred_url.rstrip("/")
+        + "/fred/series/observations",
         params=params,
         timeout=60
     )
 
     response.raise_for_status()
 
-    return response.json().get("observations", [])
+    return response.json().get(
+        "observations",
+        []
+    )
+
 
 # ============================================================
-# Insert / UPSERT WTI data into HANA (EIA)
+# Insert / UPSERT WTI data
 # ============================================================
 
 def insert_wti(rows):
@@ -1110,10 +1359,18 @@ def insert_wti(rows):
 
         for row in rows:
 
-            date_value = row.get("period")
-            price_value = row.get("value")
+            date_value = row.get(
+                "period"
+            )
 
-            if not date_value or price_value is None:
+            price_value = row.get(
+                "value"
+            )
+
+            if (
+                not date_value
+                or price_value is None
+            ):
                 continue
 
             cursor.execute(
@@ -1140,11 +1397,17 @@ def insert_wti(rows):
 
     return inserted
 
+
 # ============================================================
-# Insert / UPSERT FRED data into HANA (FRED)
+# Insert / UPSERT FRED data
 # ============================================================
 
-def insert_fred_series(rows, series_id, variable_name, unit):
+def insert_fred_series(
+    rows,
+    series_id,
+    variable_name,
+    unit
+):
 
     connection = get_hana_connection()
     cursor = connection.cursor()
@@ -1169,14 +1432,22 @@ def insert_fred_series(rows, series_id, variable_name, unit):
 
         for row in rows:
 
-            date_value = row.get("date")
-            value = row.get("value")
+            date_value = row.get(
+                "date"
+            )
+
+            value = row.get(
+                "value"
+            )
 
             if not date_value:
                 continue
 
-            # FRED uses "." when an observation is unavailable
-            if value in (None, "", "."):
+            if value in (
+                None,
+                "",
+                "."
+            ):
                 continue
 
             cursor.execute(
@@ -1207,9 +1478,9 @@ def insert_fred_series(rows, series_id, variable_name, unit):
 
     return inserted
 
+
 # ============================================================
 # Test JOBSUMM
-# Added on 09/02/2026
 # ============================================================
 
 @app.route("/test-jobsumm")
@@ -1231,9 +1502,9 @@ def test_jobsumm():
             "message": str(e)
         }), 500
 
+
 # ============================================================
 # Test JOBSUMM Update
-# Added on 09/02/2026
 # ============================================================
 
 @app.route("/test-jobsumm-update")
@@ -1244,6 +1515,7 @@ def test_jobsumm_update():
         job = get_pending_job()
 
         if not job:
+
             return jsonify({
                 "status": "error",
                 "message": "No PENDING job found"
@@ -1271,6 +1543,7 @@ def test_jobsumm_update():
             "status": "error",
             "message": str(e)
         }), 500
+
 
 # ============================================================
 # Root endpoint
@@ -1340,9 +1613,9 @@ def db_test():
         if connection:
             connection.close()
 
+
 # ============================================================
-# Test Z_GMDA_FLATFILE read
-# Added on 02/09/2026
+# Test Flat File read
 # ============================================================
 
 @app.route("/test-flat-file")
@@ -1356,7 +1629,11 @@ def test_flat_file():
             "status": "success",
             "records": len(df),
             "columns": list(df.columns),
-            "data": df.head(5).to_dict(orient="records")
+            "data": df.head(
+                5
+            ).to_dict(
+                orient="records"
+            )
         })
 
     except Exception as e:
@@ -1365,6 +1642,7 @@ def test_flat_file():
             "status": "error",
             "message": str(e)
         }), 500
+
 
 # ============================================================
 # Test Destination Service
@@ -1382,18 +1660,20 @@ def test_destination():
             {}
         )
 
-        # Never return credentials or API keys
-
         safe_response = {
             "status": "success",
             "destination": DESTINATION_NAME,
             "url": config.get("URL"),
             "type": config.get("Type"),
             "proxy_type": config.get("ProxyType"),
-            "authentication": config.get("Authentication")
+            "authentication": config.get(
+                "Authentication"
+            )
         }
 
-        return jsonify(safe_response)
+        return jsonify(
+            safe_response
+        )
 
     except Exception as e:
 
@@ -1414,7 +1694,9 @@ def fetch_wti_endpoint():
 
         rows = fetch_wti()
 
-        inserted = insert_wti(rows)
+        inserted = insert_wti(
+            rows
+        )
 
         return jsonify({
             "status": "success",
@@ -1432,6 +1714,7 @@ def fetch_wti_endpoint():
             "message": str(e)
         }), 500
 
+
 # ============================================================
 # Fetch and insert FRED currency data
 # ============================================================
@@ -1442,21 +1725,25 @@ def fetch_fred_endpoint():
     try:
 
         series_config = [
+
             {
                 "series_id": "DEXUSEU",
                 "variable_name": "usd_per_eur",
                 "unit": "USD/EUR"
             },
+
             {
                 "series_id": "DEXCHUS",
                 "variable_name": "cny_per_usd",
                 "unit": "CNY/USD"
             },
+
             {
                 "series_id": "DEXJPUS",
                 "variable_name": "jpy_per_usd",
                 "unit": "JPY/USD"
             }
+
         ]
 
         total_fetched = 0
@@ -1481,18 +1768,27 @@ def fetch_fred_endpoint():
             total_inserted += inserted
 
             results.append({
-                "series_id": config["series_id"],
-                "variable_name": config["variable_name"],
-                "records_fetched": len(rows),
-                "records_inserted": inserted
+                "series_id":
+                    config["series_id"],
+
+                "variable_name":
+                    config["variable_name"],
+
+                "records_fetched":
+                    len(rows),
+
+                "records_inserted":
+                    inserted
             })
 
         return jsonify({
             "status": "success",
             "source": "FRED",
             "destination": FRED_DESTINATION_NAME,
-            "total_records_fetched": total_fetched,
-            "total_records_inserted": total_inserted,
+            "total_records_fetched":
+                total_fetched,
+            "total_records_inserted":
+                total_inserted,
             "series": results
         })
 
@@ -1502,12 +1798,11 @@ def fetch_fred_endpoint():
             "status": "error",
             "message": str(e)
         }), 500
-        
+
+
 # ============================================================
 # Forecast Gulf Gasoline
 # ============================================================
-"""
-#Old 
 
 @app.route("/forecast-gulf-gasoline")
 def forecast_gulf_gasoline():
@@ -1517,54 +1812,22 @@ def forecast_gulf_gasoline():
         forecasts = train_and_forecast(
             horizon=30
         )
-
-        return jsonify({
-            "status": "success",
-            "model": "XGBoost",
-            "target": "gulf_gasoline_usd_gal",
-            "forecast": forecasts
-        })
-
-    except Exception as e:
-
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
-"""
-#Added on 25/08/26
-@app.route("/forecast-gulf-gasoline")
-def forecast_gulf_gasoline():
-
-    try:
-
-        # ----------------------------------------------------
-        # Generate 30-day forecast
-        # ----------------------------------------------------
-
-        forecasts = train_and_forecast(
-            horizon=30
-        )
-
-        # ----------------------------------------------------
-        # Save forecast results into HANA
-        # ----------------------------------------------------
 
         save_result = save_forecast_results(
             forecasts
         )
 
-        # ----------------------------------------------------
-        # Return response
-        # ----------------------------------------------------
-
         return jsonify({
             "status": "success",
             "model": "XGBoost",
-            "target": "gulf_gasoline_usd_gal",
-            "run_id": save_result["run_id"],
-            "records_saved": save_result["records_saved"],
-            "forecast": forecasts
+            "target":
+                "gulf_gasoline_usd_gal",
+            "run_id":
+                save_result["run_id"],
+            "records_saved":
+                save_result["records_saved"],
+            "forecast":
+                forecasts
         })
 
     except Exception as e:
@@ -1574,25 +1837,25 @@ def forecast_gulf_gasoline():
             "message": str(e)
         }), 500
 
+
 # ============================================================
 # Forecast Flat File
-# Added on 27/08/2026
 # ============================================================
 
-@app.route("/forecast-flat-file", methods=["POST"])
+@app.route(
+    "/forecast-flat-file",
+    methods=["POST"]
+)
 def forecast_flat_file():
 
     try:
-
-        # ----------------------------------------------------
-        # Check uploaded file
-        # ----------------------------------------------------
 
         if "file" not in request.files:
 
             return jsonify({
                 "status": "error",
-                "message": "CSV file is required"
+                "message":
+                    "CSV file is required"
             }), 400
 
         file = request.files["file"]
@@ -1601,60 +1864,55 @@ def forecast_flat_file():
 
             return jsonify({
                 "status": "error",
-                "message": "Filename is missing"
+                "message":
+                    "Filename is missing"
             }), 400
 
-        # ----------------------------------------------------
-        # Read filter values
-        # ----------------------------------------------------
+        dcsid = request.form.get(
+            "dcsid"
+        )
 
-        dcsid = request.form.get("dcsid")
-        mic = request.form.get("mic")
-        pricetype = request.form.get("pricetype")
+        mic = request.form.get(
+            "mic"
+        )
+
+        pricetype = request.form.get(
+            "pricetype"
+        )
 
         if not dcsid:
 
             return jsonify({
                 "status": "error",
-                "message": "DCSID is required"
+                "message":
+                    "DCSID is required"
             }), 400
 
         if not mic:
 
             return jsonify({
                 "status": "error",
-                "message": "MIC is required"
+                "message":
+                    "MIC is required"
             }), 400
 
-        # ----------------------------------------------------
-        # Read CSV
-        # ----------------------------------------------------
-
-        df = pd.read_csv(file)
-
-        # ----------------------------------------------------
-        # Generate forecast
-        # ----------------------------------------------------
-
-        forecasts = train_and_forecast_flat_file(
-            df=df,
-            dcsid=dcsid,
-            mic=mic,
-            pricetype=pricetype,
-            horizon=30
+        df = pd.read_csv(
+            file
         )
 
-        # ----------------------------------------------------
-        # Save forecast results
-        # ----------------------------------------------------
+        forecasts = (
+            train_and_forecast_flat_file(
+                df=df,
+                dcsid=dcsid,
+                mic=mic,
+                pricetype=pricetype,
+                horizon=30
+            )
+        )
 
         save_result = save_forecast_results(
             forecasts
         )
-
-        # ----------------------------------------------------
-        # Return response
-        # ----------------------------------------------------
 
         return jsonify({
             "status": "success",
@@ -1664,11 +1922,15 @@ def forecast_flat_file():
             "filters": {
                 "dcsid": dcsid,
                 "mic": mic,
-                "pricetype": pricetype
+                "pricetype":
+                    pricetype
             },
-            "run_id": save_result["run_id"],
-            "records_saved": save_result["records_saved"],
-            "forecast": forecasts
+            "run_id":
+                save_result["run_id"],
+            "records_saved":
+                save_result["records_saved"],
+            "forecast":
+                forecasts
         })
 
     except Exception as e:
@@ -1677,6 +1939,7 @@ def forecast_flat_file():
             "status": "error",
             "message": str(e)
         }), 500
+
 
 # ============================================================
 # Local development
@@ -1688,22 +1951,3 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=5000
     )
-"""
-#Added on 02/09/2026
-if __name__ == "__main__":
-
-    # Start JOBSUMM worker
-    worker_thread = threading.Thread(
-        target=job_worker,
-        daemon=True
-    )
-
-    worker_thread.start()
-
-    # Start Flask API
-    app.run(
-        host="0.0.0.0",
-        port=5000
-    )
-
-"""
