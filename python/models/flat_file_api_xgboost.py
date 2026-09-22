@@ -458,7 +458,7 @@ def train_and_forecast_flat_file_with_api(
         lag_1 = target_history[-1]
 
         # --------------------------------------------------------
-        # Target lag 7
+        #  Target lag 7
         # --------------------------------------------------------
 
         if len(target_history) >= 7:
