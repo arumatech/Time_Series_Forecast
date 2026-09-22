@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "ext/controller/ListReportExt.controller.js.map": 1790088346055,
   "manifest.json": 1787598338000,
   "ext/controller/ListReportExt.controller.js": 1787519299000,
@@ -11,4 +12,18 @@
   "Component-preload.js.map": 1790088346159,
   "ext/view/UploadDialog.fragment.xml": 1787519299000,
   "index.html": 1787519299000
+=======
+  "ext/controller/ListReportExt-dbg.controller.js": 1788970999636,
+  "Component.js": 1787165757608,
+  "manifest.json": 1788972194526,
+  "ext/controller/ListReportExt.controller.js": 1788970999636,
+  "Component-dbg.js": 1787165757608,
+  "Component.js.map": 1790100212955,
+  "i18n/i18n.properties": 1788972194526,
+  "ext/controller/ListReportExt.controller.js.map": 1790100212967,
+  "Component-preload.js": 1790100213064,
+  "Component-preload.js.map": 1790100213064,
+  "ext/view/UploadDialog.fragment.xml": 1788970999636,
+  "index.html": 1788970999636
+>>>>>>> 72a00ea (Staging pending changes)
 }

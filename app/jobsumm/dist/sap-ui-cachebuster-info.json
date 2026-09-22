@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "ext/controller/ListReportExt.controller.js": 1788928527877,
   "i18n/i18n.properties": 1787688807000,
   "manifest.json": 1787597661000,
@@ -14,4 +15,21 @@
   "ext/view/ForecastDialog.fragment.xml": 1790088074206,
   "ext/view/CorrelationDialog.fragment.xml": 1790088074206,
   "index.html": 1787519299000
+=======
+  "Component.js": 1788970999640,
+  "i18n/i18n.properties": 1788972194530,
+  "manifest.json": 1788972194530,
+  "ext/controller/ListReportExt.controller.js": 1788972194530,
+  "Component-dbg.js": 1788970999640,
+  "Component.js.map": 1790100217168,
+  "ext/controller/ListReportExt-dbg.controller.js": 1788972194530,
+  "ext/controller/ListReportExt.controller.js.map": 1790100217197,
+  "Component-preload.js": 1790100217306,
+  "Component-preload.js.map": 1790100217306,
+  "ext/view/NewJobDialog.fragment.xml": 1788970999640,
+  "ext/view/InstrumentValueHelp.fragment.xml": 1788970999640,
+  "ext/view/ForecastDialog.fragment.xml": 1788972194530,
+  "ext/view/CorrelationDialog.fragment.xml": 1788972194530,
+  "index.html": 1788970999640
+>>>>>>> 72a00ea (Staging pending changes)
 }
