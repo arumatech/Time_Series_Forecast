@@ -5,6 +5,6 @@ hdbcli
 hana-ml
 pandas
 numpy
-xgboost==2.1.4
+xgboost-cpu==2.1.4
 scikit-learn
 yfinance

@@ -105,6 +105,7 @@ modules:
     type: python
     path: python
     requires:
+      - name: TIME_SERIES_FORECAST-apl
       - name: TIME_SERIES_FORECAST-db
       - name: TIME_SERIES_FORECAST-destination-service
       - name: TIME_SERIES_FORECAST-auth
@@ -118,6 +119,11 @@ modules:
       disk-quota: 4G
 
 resources:
+  - name: TIME_SERIES_FORECAST-apl
+    type: org.cloudfoundry.existing-service
+    parameters:
+      service-name: TIME_SERIES_FORECAST-apl
+
   - name: TIME_SERIES_FORECAST-db
     type: com.sap.xs.hdi-container
     parameters:

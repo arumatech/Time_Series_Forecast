@@ -26,7 +26,7 @@
       <viewAttribute id="CURRENCY"/>
     </viewAttributes>
     <calculatedViewAttributes>
-      <calculatedViewAttribute id="TYPE" datatype="NVARCHAR" length="13" expressionLanguage="SQL">
+      <calculatedViewAttribute id="TYPE" datatype="NVARCHAR" length="100" expressionLanguage="SQL">
         <formula>'ACTUAL'</formula>
       </calculatedViewAttribute>
     </calculatedViewAttributes>
@@ -44,9 +44,11 @@
       <viewAttribute id="UOM"/>
       <viewAttribute id="CURRENCY"/>
       <viewAttribute id="FORCORR"/>
+    
+      <viewAttribute id="JOB_ID"/>
     </viewAttributes>
     <calculatedViewAttributes>
-      <calculatedViewAttribute id="TYPE" datatype="NVARCHAR" length="13" expressionLanguage="SQL">
+      <calculatedViewAttribute id="TYPE" datatype="NVARCHAR" length="100" expressionLanguage="SQL">
         <formula>&quot;FORCORR&quot;</formula>
       </calculatedViewAttribute>
     </calculatedViewAttributes>
@@ -64,6 +66,8 @@
       <viewAttribute id="UOM"/>
       <viewAttribute id="CURRENCY"/>
       <viewAttribute id="TYPE"/>
+    
+      <viewAttribute id="JOB_ID"/>
     </viewAttributes>
     <calculatedViewAttributes/>
     <input node="Projection_1" emptyUnionBehavior="NO_ROW">
@@ -77,6 +81,8 @@
       <mapping xsi:type="Calculation:AttributeMapping" target="UOM" source="UOM"/>
       <mapping xsi:type="Calculation:AttributeMapping" target="CURRENCY" source="CURRENCY"/>
       <mapping xsi:type="Calculation:AttributeMapping" target="TYPE" source="TYPE"/>
+    
+      <mapping xsi:type="Calculation:ConstantAttributeMapping" target="JOB_ID" null="true"/>
     </input>
     <input node="Projection_2" emptyUnionBehavior="NO_ROW">
       <mapping xsi:type="Calculation:AttributeMapping" target="DCSID" source="DCSID"/>
@@ -89,6 +95,8 @@
       <mapping xsi:type="Calculation:AttributeMapping" target="UOM" source="UOM"/>
       <mapping xsi:type="Calculation:AttributeMapping" target="CURRENCY" source="CURRENCY"/>
       <mapping xsi:type="Calculation:AttributeMapping" target="TYPE" source="TYPE"/>
+    
+      <mapping xsi:type="Calculation:AttributeMapping" target="JOB_ID" source="JOB_ID"/>
     </input>
   </calculationView>
 </calculationViews>
@@ -126,6 +134,11 @@
       <descriptions defaultDescription="TYPE"/>
       <keyMapping columnObjectName="Union_1" columnName="TYPE"/>
     </attribute>
+  
+    <attribute id="JOB_ID" order="11" displayAttribute="false" attributeHierarchyActive="false">
+      <descriptions defaultDescription="JOB_ID"/>
+      <keyMapping columnObjectName="Union_1" columnName="JOB_ID"/>
+    </attribute>
   </attributes>
   <calculatedAttributes/>
   <baseMeasures>
@@ -138,8 +151,7 @@
       <descriptions defaultDescription="PER"/>
       <measureMapping columnObjectName="Union_1" columnName="PER"/>
       <exceptionAggregationMetadata/>
-    </measure>
-  </baseMeasures>
+    </measure></baseMeasures>
   <calculatedMeasures/>
   <restrictedMeasures/>
   <localDimensions/>

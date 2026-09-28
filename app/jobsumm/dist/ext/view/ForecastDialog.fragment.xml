@@ -27,11 +27,14 @@
               key="XGBoost"
               text="XGBoost" />
             <core:Item
-              id="forecastModelHANAAPL"
-              key="HANA_APL"
-              text="HANA APL" />
+              id="forecastModelWTI"
+              key="XGBoost_WTI"
+              text="XGBoost + WTI" />
+            <core:Item id="forecastModelAPL" key="HANA_APL" text="HANA APL" />
           </items>
         </Select>
+
+        <Text id="forecastModelHint" text="XGBoost uses price history only. XGBoost + WTI is available for A3 / GG (CL)." class="sapUiSmallMarginTop" />
 
         <Label
           id="forecastDCSIDLabel"

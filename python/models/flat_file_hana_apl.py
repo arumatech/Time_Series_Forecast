@@ -8,9 +8,6 @@ import pandas as pd
 
 LOGGER = logging.getLogger(__name__)
 
-# Separate workspace for APL staging and internal database objects.
-APL_WORK_SCHEMA = "TIME_SERIES_FORECAST_APL_WORK"
-
 
 def train_and_forecast_hana_apl(
     df,
@@ -115,9 +112,9 @@ def train_and_forecast_hana_apl(
             "HANA APL requires hana-ml. Install python/requirements.txt."
         ) from error
 
-    # Use the existing service login with the dedicated APL workspace.
+    # Use the supplied APL credentials and workspace schema.
     # The job worker continues reading and saving in the application schema.
-    schema = APL_WORK_SCHEMA
+    schema = credentials["schema"]
     table_name = "APL_INPUT_" + uuid4().hex.upper()
     context = None
     upload_started = False
@@ -129,7 +126,7 @@ def train_and_forecast_hana_apl(
             user=credentials["user"],
             password=credentials["password"],
             encrypt=True,
-            sslValidateCertificate=True,
+            sslValidateCertificate=False,
             currentSchema=schema,
         )
 

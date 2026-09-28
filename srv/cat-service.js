@@ -2,6 +2,7 @@ const cds = require("@sap/cds");
 
 const SUPPORTED_MODELS = new Set([
   "XGBoost",
+  "XGBoost_WTI",
   "HANA_APL"
 ]);
 
@@ -9,7 +10,7 @@ function validateModel(req) {
   if (!SUPPORTED_MODELS.has(req.data.MODEL)) {
     return req.reject(
       400,
-      "Select a supported model: XGBoost or HANA APL"
+      "Select XGBoost, XGBoost + WTI, or HANA APL"
     );
   }
 }
@@ -20,6 +21,11 @@ module.exports = cds.service.impl(function () {
 
   this.before("CREATE", "JOBSUMM", async (req) => {
     validateModel(req);
+    if (req.data.MODEL === "XGBoost_WTI" &&
+        (req.data.FORCORR !== "For" || String(req.data.TARDCSID || "").trim() !== "A3" ||
+         String(req.data.TARMIC || "").trim() !== "GG")) {
+      return req.reject(400, "XGBoost + WTI requires a forecast job for A3 / GG");
+    }
 
     if (!req.data.JOBSTARTDATE) {
       return req.reject(

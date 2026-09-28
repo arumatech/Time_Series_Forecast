@@ -12,15 +12,10 @@ from flask import Flask, jsonify, request
 from hdbcli import dbapi
 
 from models.gulf_gasoline_xgboost import train_and_forecast
-from models.flat_file_xgboost import train_and_forecast_flat_file
+from models.flat_file_xgboost import train_and_forecast_flat_file, prepare_target_data
+from models.wti_data import read_wti_history
 from models.flat_file_hana_apl import train_and_forecast_hana_apl
-
-# Optional API-factor model.
-# Your existing app already uses this function for A3 + GG.
-try:
-    from models.flat_file_xgboost import train_and_forecast_flat_file_with_api
-except ImportError:
-    train_and_forecast_flat_file_with_api = None
+from apl_connection import get_apl_credentials
 
 
 app = Flask(__name__)
@@ -354,6 +349,62 @@ def read_wti_from_hana():
 # JOBSUMM Worker
 # ============================================================
 
+# Factor eligibility for explicitly selected XGBoost + WTI jobs.
+# Three calendar days is a provisional availability assumption, not a verified
+# source release schedule. No original publication/vintage timestamps exist.
+INSTRUMENT_FACTORS = {
+    ("A3", "GG"): {
+        "factors": ("WTI",),
+        "pricetype": "CL",
+        "publication_lag_days": 3,
+    },
+}
+
+
+def forecast_for_instrument(df, dcsid, mic, pricetype=None,
+                               horizon=30, forecast_start_date=None, model_name="XGBoost"):
+    """Route the selected model; an instrument never silently enables WTI."""
+    instrument = (str(dcsid).strip(), str(mic).strip())
+    if model_name not in {"XGBoost", "XGBoost_WTI"}:
+        raise ValueError(f"Unsupported XGBoost selection: {model_name}")
+    use_wti = model_name == "XGBoost_WTI"
+    profile = INSTRUMENT_FACTORS.get(instrument)
+    if use_wti and profile is None:
+        raise ValueError("XGBoost + WTI is currently available only for A3 / GG")
+    if profile is None:
+        print(f"FORECAST_FACTORS=NONE instrument={dcsid}/{mic}")
+        return train_and_forecast_flat_file(df, dcsid, mic, pricetype, horizon)
+    if profile["factors"] != ("WTI",):
+        raise ValueError(f"Unsupported factor configuration for {instrument}")
+    lag = profile["publication_lag_days"]
+    selected = df.copy()
+    if forecast_start_date is not None:
+        start = pd.Timestamp(forecast_start_date)
+        if pd.isna(start) or start.tzinfo is not None:
+            raise ValueError("Invalid forecast start date")
+        start = start.normalize()
+        selected["PRICEDATE"] = pd.to_datetime(selected["PRICEDATE"], errors="raise")
+        selected = selected[selected["PRICEDATE"] < start]
+    else:
+        start = None
+    required_type = profile["pricetype"]
+    if pricetype is not None and str(pricetype).strip() != required_type:
+        raise ValueError(f"Factor mapping for {instrument} requires price type {required_type}")
+    pricetype = required_type
+    target = prepare_target_data(selected, dcsid, mic, pricetype)
+    if start is None:
+        start = target["PRICEDATE"].max().normalize() + pd.Timedelta(days=1)
+    if (start - target["PRICEDATE"].max()).days > 7:
+        raise ValueError("Refresh A3/GG target history before this forecast; latest price is over 7 days old")
+    history_start = target["PRICEDATE"].min() - pd.Timedelta(days=30)
+    wti = read_wti_history(get_hana_connection, history_start, start) if use_wti else None
+    return train_and_forecast_flat_file(
+        selected, dcsid, mic, pricetype, horizon,
+        wti_history=wti, forecast_start_date=start, wti_publication_lag_days=lag,
+        direct_forecast=True,
+    )
+
+
 def process_job(job):
 
     job_id = job["JOB_ID"]
@@ -386,12 +437,13 @@ def process_job(job):
 
         if model_name not in {
             "XGBoost",
+            "XGBoost_WTI",
             "HANA_APL"
         }:
 
             raise ValueError(
                 f"Unsupported model '{model_name}'. "
-                "Select XGBoost or HANA APL."
+                "Select XGBoost, XGBoost + WTI, or HANA APL."
             )
 
         # ----------------------------------------------------
@@ -562,138 +614,38 @@ def process_job(job):
         # XGBOOST
         # ====================================================
 
-        if model_name == "XGBoost":
+        if model_name in {"XGBoost", "XGBoost_WTI"}:
+            forecasts = forecast_for_instrument(
+                model_name=model_name,
+                df=df,
+                dcsid=dcsid,
+                mic=mic,
+                pricetype=(str(metadata_row["PRICETYPE"]).strip()
+                           if (str(dcsid).strip(), str(mic).strip()) in INSTRUMENT_FACTORS
+                           else None),
+                horizon=horizon,
+                forecast_start_date=forecast_start_date,
+            )
 
-            # ------------------------------------------------
-            # A3 + GG
-            # ------------------------------------------------
-            # A3 + GG uses the WTI API-factor model.
-            # Everything else uses the standard flat-file model.
-            # ------------------------------------------------
-
-            if (
-                str(dcsid).strip()
-                == API_FORECAST_DCSID
-                and
-                str(mic).strip()
-                == API_FORECAST_MIC
-            ):
-
-                print(
-                    f"JOB_ID {job_id}: "
-                    f"using API-factor XGBoost "
-                    f"for {dcsid} / {mic}"
-                )
-
-                if train_and_forecast_flat_file_with_api is None:
-
-                    raise ImportError(
-                        "train_and_forecast_flat_file_with_api "
-                        "is not available in "
-                        "models.flat_file_xgboost"
-                    )
-
-                # ------------------------------------------------
-                # Read WTI API data already stored in HANA
-                # ------------------------------------------------
-
-                wti_df = read_wti_from_hana()
-
-                if wti_df.empty:
-
-                    raise Exception(
-                        "FORECAST_DATA_EIA_WTI_PRICES "
-                        "contains no data"
-                    )
-
-                # ------------------------------------------------
-                # Run API-factor model
-                # ------------------------------------------------
-
-                forecasts = (
-                    train_and_forecast_flat_file_with_api(
-                        flat_df=df,
-                        dcsid=dcsid,
-                        mic=mic,
-                        pricetype=None,
-                        horizon=horizon,
-                        api_factors=[
-                            {
-                                "df": wti_df,
-                                "value_column": "VALUE",
-                                "name": "WTI"
-                            }
-                        ]
-                    )
-                )
-
-                # API-factor model may return dates based on
-                # historical data, so align them to JOBSTARTDATE.
-                for index, forecast in enumerate(
-                    forecasts
-                ):
-
-                    forecast_date = (
-                        forecast_start_date
-                        + pd.Timedelta(days=index)
-                    )
-
+            # Preserve the developer's requested-start-date behavior for
+            # legacy price-only instruments. A3/GG already uses this start
+            # inside its direct forecast and must retain its generated dates.
+            if (str(dcsid).strip(), str(mic).strip()) not in INSTRUMENT_FACTORS:
+                for index, forecast in enumerate(forecasts):
                     forecast["date"] = (
-                        forecast_date.strftime(
-                            "%Y-%m-%d"
-                        )
-                    )
-
-            else:
-
-                print(
-                    f"JOB_ID {job_id}: "
-                    f"using standard XGBoost "
-                    f"for {dcsid} / {mic}"
-                )
-
-                forecasts = train_and_forecast_flat_file(
-                    df=df,
-                    dcsid=dcsid,
-                    mic=mic,
-                    pricetype=None,
-                    horizon=horizon
-                )
-
-                # Preserve existing XGBoost behavior:
-                # forecast begins on JOBSTARTDATE.
-                for index, forecast in enumerate(
-                    forecasts
-                ):
-
-                    forecast_date = (
-                        forecast_start_date
-                        + pd.Timedelta(days=index)
-                    )
-
-                    forecast["date"] = (
-                        forecast_date.strftime(
-                            "%Y-%m-%d"
-                        )
-                    )
-
-        # ====================================================
-        # HANA APL
-        # ====================================================
+                        forecast_start_date + pd.Timedelta(days=index)
+                    ).strftime("%Y-%m-%d")
 
         elif model_name == "HANA_APL":
-
             print(
-                f"JOB_ID {job_id}: "
-                f"using HANA APL "
-                f"for {dcsid} / {mic}"
+                f"JOB_ID {job_id}: using HANA APL for {dcsid} / {mic}"
             )
 
             forecasts = train_and_forecast_hana_apl(
                 df=df,
                 dcsid=dcsid,
                 mic=mic,
-                credentials=get_hana_credentials(),
+                credentials=get_apl_credentials(),
                 pricetype=None,
                 horizon=horizon,
                 forecast_start_date=forecast_start_date
@@ -920,11 +872,19 @@ def save_forecast_results(forecasts):
 # Save Job Forecast Results into FORCORR
 # ============================================================
 
-def save_job_forecast_results(
-    job,
-    forecasts,
-    metadata_row
-):
+def save_job_forecast_results(job, forecasts, metadata_row):
+
+    # Keep JOBSUMM's job codes; store descriptive labels in result rows.
+    result_types = {
+        "For": "FORECAST",
+        "Corr": "CORRELATION",
+        "FORECAST": "FORECAST",
+        "CORRELATION": "CORRELATION",
+    }
+    result_type = result_types[job["FORCORR"]]
+    if result_type == "FORECAST":
+        result_type = {"XGBoost": "XGBoost", "XGBoost_WTI": "XGBoost + WTI",
+                       "HANA_APL": "HANA APL"}[str(job["MODEL"]).strip()]
 
     connection = get_hana_connection()
     cursor = connection.cursor()
@@ -966,7 +926,7 @@ def save_job_forecast_results(
                     metadata_row["MKEYDT"],
                     forecast["date"],
                     job["JOB_ID"],
-                    job["FORCORR"],
+                    result_type,
                     float(
                         forecast["predicted_value"]
                     ),
@@ -1896,19 +1856,16 @@ def forecast_flat_file():
                     "MIC is required"
             }), 400
 
-        df = pd.read_csv(
-            file
+        df = pd.read_csv(file)
+
+        forecasts = forecast_for_instrument(
+            df=df,
+            dcsid=dcsid,
+            mic=mic,
+            pricetype=pricetype,
+            horizon=30,
         )
 
-        forecasts = (
-            train_and_forecast_flat_file(
-                df=df,
-                dcsid=dcsid,
-                mic=mic,
-                pricetype=pricetype,
-                horizon=30
-            )
-        )
 
         save_result = save_forecast_results(
             forecasts

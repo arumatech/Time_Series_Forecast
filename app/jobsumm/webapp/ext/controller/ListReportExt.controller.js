@@ -353,6 +353,11 @@ sap.ui.define([
           oView.byId("forecastModel")
             .getSelectedKey();
 
+        if (sModel === "XGBoost_WTI" && (sDCSID !== "A3" || sMIC !== "GG")) {
+          MessageToast.show("XGBoost + WTI is currently available only for A3 / GG");
+          return;
+        }
+
         const sJobStartDate =
           oView.byId("forecastJobStartDate")
             .getValue();
