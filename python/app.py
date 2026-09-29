@@ -16,6 +16,8 @@ from models.flat_file_xgboost import train_and_forecast_flat_file, prepare_targe
 from models.wti_data import read_wti_history
 from models.flat_file_hana_apl import train_and_forecast_hana_apl
 from apl_connection import get_apl_credentials
+from models.flat_file_arima import train_and_forecast_flat_file_arima
+from models.flat_file_sarimax import train_and_forecast_flat_file_sarimax
 
 
 app = Flask(__name__)
@@ -438,12 +440,14 @@ def process_job(job):
         if model_name not in {
             "XGBoost",
             "XGBoost_WTI",
-            "HANA_APL"
+            "HANA_APL",
+            "ARIMA",
+            "SARIMAX"
         }:
 
             raise ValueError(
                 f"Unsupported model '{model_name}'. "
-                "Select XGBoost, XGBoost + WTI, or HANA APL."
+                "Select XGBoost, XGBoost + WTI, ARIMA, SARIMAX or HANA APL."
             )
 
         # ----------------------------------------------------
@@ -650,7 +654,64 @@ def process_job(job):
                 horizon=horizon,
                 forecast_start_date=forecast_start_date
             )
+        
+        #Added on 29/07/2026
+        elif model_name == "ARIMA":
+            print(
+                    f"JOB_ID {job_id}: using ARIMA for "
+                    f"{dcsid} / {mic}"
+                )
 
+            forecasts = train_and_forecast_flat_file_arima(
+                df=df,
+                dcsid=dcsid,
+                mic=mic,
+                pricetype=str(
+                    metadata_row["PRICETYPE"]
+                ).strip(),
+                horizon=horizon,
+                forecast_start_date=forecast_start_date
+            )
+        
+        elif model_name == "SARIMAX":
+            print(
+                f"JOB_ID {job_id}: using SARIMAX for "
+                f"{dcsid} / {mic}"
+            )
+
+            # SARIMAX currently uses WTI only for the
+            # A3 / GG / CL instrument.
+            if (
+                str(dcsid).strip() != "A3"
+                or str(mic).strip() != "GG"
+                or str(metadata_row["PRICETYPE"]).strip() != "CL"
+            ):
+                raise ValueError(
+                    "SARIMAX + WTI is currently "
+                    "available only for A3 / GG / CL"
+                )
+
+            history_start = (
+                df["PRICEDATE"].min()
+            )
+
+            wti_history = read_wti_history(
+                get_hana_connection,
+                history_start,
+                forecast_start_date
+            )
+
+            forecasts = train_and_forecast_flat_file_sarimax(
+                df=df,
+                wti_history=wti_history,
+                dcsid=dcsid,
+                mic=mic,
+                pricetype=str(
+                    metadata_row["PRICETYPE"]
+                ).strip(),
+                horizon=horizon,
+                forecast_start_date=forecast_start_date
+            )
         # ----------------------------------------------------
         # Validate entire forecast
         # ----------------------------------------------------
@@ -884,7 +945,7 @@ def save_job_forecast_results(job, forecasts, metadata_row):
     result_type = result_types[job["FORCORR"]]
     if result_type == "FORECAST":
         result_type = {"XGBoost": "XGBoost", "XGBoost_WTI": "XGBoost + WTI",
-                       "HANA_APL": "HANA APL"}[str(job["MODEL"]).strip()]
+                       "HANA_APL": "HANA APL", "ARIMA": "ARIMA", "SARIMAX": "SARIMAX + WTI"}[str(job["MODEL"]).strip()]
 
     connection = get_hana_connection()
     cursor = connection.cursor()
