@@ -161,32 +161,28 @@ def train_and_forecast_flat_file_sarimax(
     # 9. Prepare WTI history
     # ------------------------------------------------------------
 
-    if "PERIOD" not in wti.columns:
+    if "DATE" not in wti.columns:
         raise ValueError(
-            "WTI history must contain PERIOD"
+            "WTI history must contain DATE"
         )
 
-    if "WTI_CRUDE_USD_BBL" not in wti.columns:
+    if "VALUE" not in wti.columns:
         raise ValueError(
-            "WTI history must contain "
-            "WTI_CRUDE_USD_BBL"
+            "WTI history must contain VALUE"
         )
 
-    wti["PERIOD"] = pd.to_datetime(
-        wti["PERIOD"],
+    wti["DATE"] = pd.to_datetime(
+        wti["DATE"],
         errors="coerce"
     )
 
-    wti["WTI_CRUDE_USD_BBL"] = pd.to_numeric(
-        wti["WTI_CRUDE_USD_BBL"],
+    wti["VALUE"] = pd.to_numeric(
+        wti["VALUE"],
         errors="coerce"
     )
 
     wti = wti.dropna(
-        subset=[
-            "PERIOD",
-            "WTI_CRUDE_USD_BBL"
-        ]
+        subset=["DATE", "VALUE"]
     )
 
     if wti.empty:
@@ -196,14 +192,12 @@ def train_and_forecast_flat_file_sarimax(
 
     wti = (
         wti
-        .sort_values("PERIOD")
+        .sort_values("DATE")
         .drop_duplicates(
-            subset=["PERIOD"],
+            subset=["DATE"],
             keep="last"
         )
-        .set_index("PERIOD")[
-            "WTI_CRUDE_USD_BBL"
-        ]
+        .set_index("DATE")["VALUE"]
         .astype(float)
         .sort_index()
         .asfreq("D")
@@ -220,12 +214,10 @@ def train_and_forecast_flat_file_sarimax(
         training_index
     ).ffill()
 
-    # If WTI starts after the target history, there
-    # will still be missing values at the beginning.
+    # Keep only dates where both PRICE and WTI exist.
     valid_mask = (
-        target_series.index.isin(
-            wti_training.dropna().index
-        )
+        wti_training.notna()
+        & target_series.notna()
     )
 
     target_series = target_series.loc[
@@ -241,6 +233,7 @@ def train_and_forecast_flat_file_sarimax(
             "Insufficient overlapping PRICE and WTI "
             "history for SARIMAX"
         )
+
 
     # ------------------------------------------------------------
     # 11. Build future WTI values
