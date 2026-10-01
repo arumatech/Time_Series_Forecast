@@ -690,7 +690,7 @@ def process_job(job):
                     "SARIMAX + WTI is currently "
                     "available only for A3 / GG / CL"
                 )
-
+            """
             history_start = (
                 df["PRICEDATE"].min()
             )
@@ -700,6 +700,12 @@ def process_job(job):
                 history_start,
                 forecast_start_date
             )
+            """
+            # SARIMAX uses the existing WTI table directly.
+            # Do not use wti_data.py here because that module
+            # is reserved for the separate availability/alignment logic.
+
+            wti_history = read_wti_from_hana()
 
             forecasts = train_and_forecast_flat_file_sarimax(
                 df=df,
