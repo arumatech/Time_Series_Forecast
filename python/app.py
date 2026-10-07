@@ -18,6 +18,8 @@ from models.flat_file_hana_apl import train_and_forecast_hana_apl
 from apl_connection import get_apl_credentials
 from models.flat_file_arima import train_and_forecast_flat_file_arima
 from models.flat_file_sarimax import train_and_forecast_flat_file_sarimax
+#from models.flat_file_lstm import train_and_forecast_flat_file_lstm
+from models.diesel_extratrees import train_and_forecast_diesel
 
 
 app = Flask(__name__)
@@ -34,6 +36,7 @@ HANA_SERVICE_NAME = "TIME_SERIES_FORECAST-db"
 
 TABLE_NAME = '"FORECAST_DATA_EIA_WTI_PRICES"'
 FRED_TABLE_NAME = '"FORECAST_DATA_FRED_CURRENCY"'
+BRENT_TABLE_NAME = '"FORECAST_DATA_FRED_BRENT"'
 
 FORECAST_RESULTS_TABLE = '"FORECAST_DATA_FORECAST_RESULTS"'
 FORCORR_TABLE = '"ZRISK_FORCORR"'
@@ -346,6 +349,42 @@ def read_wti_from_hana():
         cursor.close()
         connection.close()
 
+# ============================================================
+# Added on 07/10/2026
+# Read Brent Data from HANA
+# ============================================================
+
+def read_brent_from_hana():
+
+    connection = get_hana_connection()
+    cursor = connection.cursor()
+
+    sql = f"""
+        SELECT
+            "DATE",
+            "VALUE"
+        FROM {BRENT_TABLE_NAME}
+        ORDER BY "DATE"
+    """
+
+    try:
+
+        cursor.execute(sql)
+
+        rows = cursor.fetchall()
+
+        return pd.DataFrame(
+            rows,
+            columns=[
+                "DATE",
+                "VALUE"
+            ]
+        )
+
+    finally:
+
+        cursor.close()
+        connection.close()
 
 # ============================================================
 # JOBSUMM Worker
@@ -442,12 +481,14 @@ def process_job(job):
             "XGBoost_WTI",
             "HANA_APL",
             "ARIMA",
-            "SARIMAX"
+            "SARIMAX",
+           # "LSTM",
+            "Diesel_ExtraTrees"
         }:
 
             raise ValueError(
                 f"Unsupported model '{model_name}'. "
-                "Select XGBoost, XGBoost + WTI, ARIMA, SARIMAX or HANA APL."
+                "Select XGBoost, XGBoost + WTI, ARIMA, SARIMAX, LSTM, Diesel_ExtraTrees or HANA APL."
             )
 
         # ----------------------------------------------------
@@ -522,10 +563,12 @@ def process_job(job):
             )
 
         if horizon_type == "W":
-            horizon = horizon * 7
+            if model_name != "Diesel_ExtraTrees":
+                horizon = horizon * 7
 
         elif horizon_type == "M":
-            horizon = horizon * 30
+            if model_name != "Diesel_ExtraTrees":
+                horizon = horizon * 30
 
         if not dcsid:
             raise Exception(
@@ -718,19 +761,88 @@ def process_job(job):
                 horizon=horizon,
                 forecast_start_date=forecast_start_date
             )
+        
+        elif model_name == "Diesel_ExtraTrees":
+
+            print(
+                f"JOB_ID {job_id}: using Diesel ExtraTrees "
+                f"for {dcsid} / {mic}"
+            )
+
+            # ------------------------------------------------
+            # Diesel uses:
+            #
+            #   Weekly Diesel history
+            #   Weekly WTI history
+            #   Weekly Brent history
+            #
+            # WTI and Brent are forecast recursively
+            # inside the Diesel model.
+            # ------------------------------------------------
+
+            wti_history = read_wti_from_hana()
+
+            brent_history = read_brent_from_hana()
+
+            if wti_history.empty:
+
+                raise ValueError(
+                    "WTI table contains no data"
+                )
+
+            if brent_history.empty:
+
+                raise ValueError(
+                    "Brent table contains no data"
+                )
+
+            forecasts = train_and_forecast_diesel(
+                df=df,
+                wti_history=wti_history,
+                brent_history=brent_history,
+                dcsid=dcsid,
+                mic=mic,
+                pricetype=str(
+                    metadata_row["PRICETYPE"]
+                ).strip(),
+                horizon=horizon,
+                forecast_start_date=forecast_start_date
+            )
+
         # ----------------------------------------------------
         # Validate entire forecast
         # ----------------------------------------------------
 
-        expected_dates = (
-            pd.date_range(
-                forecast_start_date,
-                periods=horizon,
-                freq="D"
+        if model_name == "Diesel_ExtraTrees":
+
+            diesel_start_date = (
+                forecast_start_date
+                + pd.Timedelta(
+                    days=(-forecast_start_date.weekday()) % 7
+                )
             )
-            .strftime("%Y-%m-%d")
-            .tolist()
-        )
+
+            expected_dates = (
+                pd.date_range(
+                    diesel_start_date,
+                    periods=horizon,
+                    freq="7D"
+                )
+                .strftime("%Y-%m-%d")
+                .tolist()
+            )
+
+        else:
+
+            expected_dates = (
+                pd.date_range(
+                    forecast_start_date,
+                    periods=horizon,
+                    freq="D"
+                )
+                .strftime("%Y-%m-%d")
+                .tolist()
+            )
 
         if (
             not isinstance(
@@ -951,7 +1063,9 @@ def save_job_forecast_results(job, forecasts, metadata_row):
     result_type = result_types[job["FORCORR"]]
     if result_type == "FORECAST":
         result_type = {"XGBoost": "XGBoost", "XGBoost_WTI": "XGBoost + WTI",
-                       "HANA_APL": "HANA APL", "ARIMA": "ARIMA", "SARIMAX": "SARIMAX + WTI"}[str(job["MODEL"]).strip()]
+                       "HANA_APL": "HANA APL", "ARIMA": "ARIMA", "SARIMAX": "SARIMAX + WTI", "Diesel_ExtraTrees": "Diesel ExtraTrees"
+                     #  "LSTM": "LSTM"
+                       }[str(job["MODEL"]).strip()]
 
     connection = get_hana_connection()
     cursor = connection.cursor()
@@ -1505,6 +1619,72 @@ def insert_fred_series(
 
     return inserted
 
+# ============================================================
+#Added on 06/10/2026
+# Insert / UPSERT Brent data
+# ============================================================
+
+def insert_brent_series(rows):
+
+    connection = get_hana_connection()
+    cursor = connection.cursor()
+
+    sql = f"""
+        UPSERT {BRENT_TABLE_NAME}
+        (
+            "DATE",
+            "VALUE",
+            "SERIES_ID",
+            "VARIABLE_NAME",
+            "UNIT",
+            "SOURCE"
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        WITH PRIMARY KEY
+    """
+
+    inserted = 0
+
+    try:
+
+        for row in rows:
+
+            date_value = row.get("date")
+            value = row.get("value")
+
+            if not date_value:
+                continue
+
+            if value in (None, "", "."):
+                continue
+
+            cursor.execute(
+                sql,
+                (
+                    date_value,
+                    float(value),
+                    "DCOILBRENTEU",
+                    "brent_crude",
+                    "USD/bbl",
+                    "FRED"
+                )
+            )
+
+            inserted += 1
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        cursor.close()
+        connection.close()
+
+    return inserted
 
 # ============================================================
 # Test JOBSUMM
@@ -1741,6 +1921,7 @@ def fetch_wti_endpoint():
             "message": str(e)
         }), 500
 
+"""
 
 # ============================================================
 # Fetch and insert FRED currency data
@@ -1826,7 +2007,133 @@ def fetch_fred_endpoint():
             "message": str(e)
         }), 500
 
+        # ----------------------------------------------------
+        # Fetch and insert Brent crude from FRED
+        # ----------------------------------------------------
 
+        brent_rows = fetch_fred_series(
+            "DCOILBRENTEU"
+        )
+
+        brent_inserted = insert_brent_series(
+            brent_rows
+        )
+
+        total_fetched += len(brent_rows)
+        total_inserted += brent_inserted
+
+        results.append({
+            "series_id": "DCOILBRENTEU",
+            "variable_name": "brent_crude",
+            "records_fetched": len(brent_rows),
+            "records_inserted": brent_inserted
+        })
+"""
+# ============================================================
+# Fetch and insert FRED currency + Brent data
+# ============================================================
+
+@app.route("/fetch-fred")
+def fetch_fred_endpoint():
+
+    try:
+
+        series_config = [
+
+            {
+                "series_id": "DEXUSEU",
+                "variable_name": "usd_per_eur",
+                "unit": "USD/EUR"
+            },
+
+            {
+                "series_id": "DEXCHUS",
+                "variable_name": "cny_per_usd",
+                "unit": "CNY/USD"
+            },
+
+            {
+                "series_id": "DEXJPUS",
+                "variable_name": "jpy_per_usd",
+                "unit": "JPY/USD"
+            }
+
+        ]
+
+        total_fetched = 0
+        total_inserted = 0
+
+        results = []
+
+        # ----------------------------------------------------
+        # Existing FRED currency series
+        # ----------------------------------------------------
+
+        for config in series_config:
+
+            rows = fetch_fred_series(
+                config["series_id"]
+            )
+
+            inserted = insert_fred_series(
+                rows,
+                config["series_id"],
+                config["variable_name"],
+                config["unit"]
+            )
+
+            total_fetched += len(rows)
+            total_inserted += inserted
+
+            results.append({
+                "series_id": config["series_id"],
+                "variable_name": config["variable_name"],
+                "records_fetched": len(rows),
+                "records_inserted": inserted
+            })
+
+        # ----------------------------------------------------
+        # Brent crude from FRED
+        # ----------------------------------------------------
+
+        brent_rows = fetch_fred_series(
+            "DCOILBRENTEU"
+        )
+
+        brent_inserted = insert_brent_series(
+            brent_rows
+        )
+
+        total_fetched += len(brent_rows)
+        total_inserted += brent_inserted
+
+        results.append({
+            "series_id": "DCOILBRENTEU",
+            "variable_name": "brent_crude",
+            "records_fetched": len(brent_rows),
+            "records_inserted": brent_inserted
+        })
+
+        # ----------------------------------------------------
+        # Final response
+        # ----------------------------------------------------
+
+        return jsonify({
+            "status": "success",
+            "source": "FRED",
+            "destination": FRED_DESTINATION_NAME,
+            "total_records_fetched": total_fetched,
+            "total_records_inserted": total_inserted,
+            "series": results
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+        
 # ============================================================
 # Forecast Gulf Gasoline
 # ============================================================
@@ -1863,7 +2170,6 @@ def forecast_gulf_gasoline():
             "status": "error",
             "message": str(e)
         }), 500
-
 
 # ============================================================
 # Forecast Flat File
