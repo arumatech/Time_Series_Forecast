@@ -34,3 +34,14 @@ entity FRED_Currency {
         UNIT          : String(30);
         SOURCE        : String(20);
 }
+
+@cds.persistence.name: 'FORECAST_DATA_FRED_BRENT'
+entity FRED_Brent {
+    key DATE          : Date;
+
+        SERIES_ID     : String(20);
+        VARIABLE_NAME : String(50);
+        VALUE         : Decimal(18,8);
+        UNIT          : String(30);
+        SOURCE        : String(20);
+}
