@@ -1,3 +1,4 @@
+#Diesel ExtraTrees design uses recursive forecasting for both WTI and Brent
 import numpy as np
 import pandas as pd
 
