@@ -21,3 +21,7 @@ mta_archives/
 .env
 # auto generated wildcard
 db/.env
+
+# Local Python environment and bytecode
+.venv/
+__pycache__/

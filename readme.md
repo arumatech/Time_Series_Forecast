@@ -1,5 +1,8 @@
 # SAP Time Series Forecasting – SAP HANA and Analytics
 
+The minimal daily EIA-to-oil-forecast task is described in
+[Minimal daily oil forecast](docs/minimal-oil-pipeline.md).
+
 **Organization:** Aruma Tech  
 **Platform:** SAP Business Technology Platform (SAP BTP)  
 **Primary Languages:** Python and JavaScript  
