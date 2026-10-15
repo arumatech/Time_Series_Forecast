@@ -1,3 +1,6 @@
+from math import isfinite
+from numbers import Integral
+
 import pandas as pd
 from statsmodels.tsa.arima.model import ARIMA
 
@@ -32,8 +35,8 @@ def train_and_forecast_flat_file_arima(
     if not pricetype:
         raise ValueError("PRICETYPE is required for ARIMA")
 
-    if horizon <= 0:
-        raise ValueError("ARIMA horizon must be positive")
+    if isinstance(horizon, bool) or not isinstance(horizon, Integral) or horizon <= 0:
+        raise ValueError("ARIMA horizon must be a positive integer")
 
     # ------------------------------------------------------------
     # 2. Copy data
@@ -126,6 +129,12 @@ def train_and_forecast_flat_file_arima(
             f"{dcsid} / {mic} / {pricetype}"
         )
 
+    if len(selected) < 30:
+        raise ValueError("ARIMA needs at least 30 actual historical observations")
+
+    if not selected["PRICE"].map(isfinite).all():
+        raise ValueError("ARIMA history contains non-finite prices")
+
     # ------------------------------------------------------------
     # 8. Create ARIMA time series
     # ------------------------------------------------------------
@@ -181,13 +190,19 @@ def train_and_forecast_flat_file_arima(
 
     fitted_model = model.fit()
 
+    if not fitted_model.mle_retvals.get("converged", True):
+        raise ValueError("ARIMA did not converge")
+
     # ------------------------------------------------------------
     # 10. Generate forecast
     # ------------------------------------------------------------
 
+    # Forecast through any publication/weekend gap before the requested date.
+    # Relabeling the first step as a later date would shift the forecast.
+    gap_days = (forecast_start - series.index[-1]).days - 1
     forecast_values = fitted_model.forecast(
-        steps=horizon
-    )
+        steps=gap_days + int(horizon)
+    ).iloc[-int(horizon):]
 
     # ------------------------------------------------------------
     # 11. Convert forecast to standard result format
@@ -204,7 +219,7 @@ def train_and_forecast_flat_file_arima(
 
         predicted_value = float(value)
 
-        if not pd.notna(predicted_value):
+        if not isfinite(predicted_value):
             raise ValueError(
                 "ARIMA produced a non-finite forecast value"
             )

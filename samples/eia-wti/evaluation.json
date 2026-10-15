@@ -1,0 +1,16 @@
+{
+  "holdouts": 5,
+  "scored_actual_observations": 23,
+  "arima_order": [
+    5,
+    1,
+    0
+  ],
+  "horizon_calendar_days": 7,
+  "arima_mae_usd_bbl": 1.1741012425109276,
+  "baseline_mae_usd_bbl": 1.1808695652173915,
+  "arima_rmse_usd_bbl": 1.4906664380022692,
+  "baseline_rmse_usd_bbl": 1.4956342263837221,
+  "arima_beats_baseline_mae": true,
+  "note": "Small historical comparison, not a guarantee. Current revised data; calendar-day model with forward-filled training gaps. Only published actuals are scored."
+}

@@ -7,6 +7,13 @@ service OilService {
     entity EIA_PRICES_DAILY
         as projection on ZFOR.EIA_PRICES_DAILY;
 
+    entity OIL_FORECAST_RUNS
+        as projection on ZFOR.OIL_FORECAST_RUNS;
+
+    @readonly
+    entity OIL_FORECASTS
+        as projection on ZFOR.OIL_FORECASTS;
+
     entity EIA_INVENTORY_WEEKLY
         as projection on ZFOR.EIA_INVENTORY_WEEKLY;
 

@@ -1,5 +1,11 @@
 # SAP Time Series Forecasting – SAP HANA and Analytics
 
+For local startup, the three ZRISK tables, real upload-ready data, and the
+initial ARIMA workflow, start with the [practical project guide](docs/project-guide.md).
+
+The minimal daily EIA-to-oil-forecast task is described in
+[Minimal daily oil forecast](docs/minimal-oil-pipeline.md).
+
 **Organization:** Aruma Tech  
 **Platform:** SAP Business Technology Platform (SAP BTP)  
 **Primary Languages:** Python and JavaScript  

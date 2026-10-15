@@ -1,6 +1,6 @@
 namespace ZFOR;
 
-using {managed} from '@sap/cds/common';
+using {cuid, managed} from '@sap/cds/common';
 
 
 // ============================================================================
@@ -24,6 +24,30 @@ entity EIA_PRICES_DAILY : managed {
     GULF_ULSD_DIESEL_USD_GAL : Decimal(15, 4);
 
     GULF_JETFUEL_USD_GAL : Decimal(15, 4);
+}
+
+// One saved daily forecast, including its historical evaluation and data cutoff.
+entity OIL_FORECAST_RUNS : cuid, managed {
+    BENCHMARK     : String(5) not null;
+    MODEL         : String(20) not null;
+    MODEL_VERSION : String(40) not null;
+    DATA_CUTOFF   : Date not null;
+    ISSUED_AT     : Timestamp not null;
+    HORIZON       : Integer not null;
+    INTERVAL_LEVEL : Decimal(3, 2);
+    FORECASTS : Composition of many OIL_FORECASTS on FORECASTS.RUN = $self;
+}
+
+entity OIL_FORECASTS {
+    key RUN         : Association to OIL_FORECAST_RUNS;
+    key TARGET_DATE : Date;
+    HORIZON_STEP    : Integer;
+    OBSERVATION_LEAD : Integer;
+    PRICE_USD_BBL   : Decimal(15, 4);
+    LOWER_USD_BBL   : Decimal(15, 4);
+    UPPER_USD_BBL   : Decimal(15, 4);
+    NAIVE_MAE      : Decimal(15, 4);
+    ARIMA_MAE      : Decimal(15, 4);
 }
 
 

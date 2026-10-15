@@ -3,6 +3,7 @@ const cds = require("@sap/cds");
 const SUPPORTED_MODELS = new Set([
   "XGBoost",
   "XGBoost_WTI",
+  "ARIMA",
   "HANA_APL"
 ]);
 
@@ -10,7 +11,7 @@ function validateModel(req) {
   if (!SUPPORTED_MODELS.has(req.data.MODEL)) {
     return req.reject(
       400,
-      "Select XGBoost, XGBoost + WTI, or HANA APL"
+      "Select XGBoost, XGBoost + WTI, ARIMA, or HANA APL"
     );
   }
 }
