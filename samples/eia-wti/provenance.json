@@ -1,0 +1,24 @@
+{
+  "publisher": "U.S. Energy Information Administration",
+  "distributor": "FRED, Federal Reserve Bank of St. Louis",
+  "series_id": "DCOILWTICO",
+  "series_url": "https://fred.stlouisfed.org/series/DCOILWTICO",
+  "download_url": "https://fred.stlouisfed.org/graph/fredgraph.csv",
+  "retrieved_at_utc": "2026-10-15T14:51:22.116110+00:00",
+  "requested_start": "2023-01-01",
+  "requested_end": "2025-12-31",
+  "observations": 746,
+  "first_observation": "2023-01-03",
+  "last_observation": "2025-12-31",
+  "forecast_start": "2026-01-01",
+  "test_mapping": {
+    "DCSID": "EIA_WTI",
+    "MIC": "TEST",
+    "PRICETYPE": "SP",
+    "MKEYDT": "2099-12-31",
+    "PER": 1,
+    "UOM": "BBL",
+    "CURRENCY": "USD"
+  },
+  "mapping_note": "Identifiers, price-type label and maturity sentinel are test conventions, not EIA instrument metadata. Prices are unmodified published USD/barrel spot observations."
+}
